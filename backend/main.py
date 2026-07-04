@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import sqlite3
 import os
 from datetime import datetime, timedelta
@@ -14,6 +15,7 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Инициализация БД
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -31,7 +33,6 @@ def init_db():
             expires_at DATETIME
         )
     """)
-    # Засеиваем, если пусто
     if cursor.execute("SELECT count(*) FROM listings").fetchone()[0] == 0:
         expires_at = datetime.now() + timedelta(days=7)
         cursor.execute("""
@@ -43,12 +44,34 @@ def init_db():
 
 init_db()
 
-# Монтирование API и статики
-# Важно: API должны быть определены раньше, или app.mount должен стоять ПОСЛЕ них, 
-# чтобы статика не перехватывала запросы к /api/
+# API
+@app.get("/api/listings")
+async def get_listings():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, lat, lng, price_per_person, people_needed FROM listings WHERE status = 'active'")
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"id": r[0], "lat": r[1], "lng": r[2], "price": r[3], "people_needed": r[4]} for r in rows]
 
+@app.get("/api/listings/{id}")
+async def get_listing(id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM listings WHERE id = ?", (id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {"id": row[0], "telegram_username": row[2], "price": row[5], "photos": []}
+    return {"error": "Not found"}
+
+# Статика и корень
+@app.get("/")
+async def read_index():
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
