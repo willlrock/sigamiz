@@ -30,15 +30,23 @@ def init_db():
             people_needed INTEGER,
             has_wifi BOOLEAN,
             has_ac BOOLEAN,
+            status TEXT DEFAULT 'active',
             expires_at DATETIME
         )
     """)
+    # Проверка на наличие столбца status
+    cursor.execute("PRAGMA table_info(listings)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'status' not in columns:
+        cursor.execute("ALTER TABLE listings ADD COLUMN status TEXT DEFAULT 'active'")
+        
+    # Засеиваем, если пусто
     if cursor.execute("SELECT count(*) FROM listings").fetchone()[0] == 0:
         expires_at = datetime.now() + timedelta(days=7)
         cursor.execute("""
-            INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, has_wifi, has_ac, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (371445197, "Tameweezer", 41.2995, 69.2401, 1500000, 1, 1, 1, expires_at))
+            INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, has_wifi, has_ac, status, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (371445197, "Tameweezer", 41.2995, 69.2401, 1500000, 1, 1, 1, 'active', expires_at))
     conn.commit()
     conn.close()
 
