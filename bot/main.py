@@ -24,9 +24,19 @@ class AddListingStates(StatesGroup):
     photos = State()
     confirm = State()
 
+import math
+import random
+
 def blur_location(lat, lng):
-    offset = random.uniform(0.0015, 0.002)
-    return lat + offset, lng + offset
+    # Расстояние: 150-200 метров (в градусах lat/lng 1 градус ~ 111 км, 1 м ~ 0.000009 градусов)
+    # 150 метров = 0.00135 градусов, 200 метров = 0.0018 градусов
+    radius = random.uniform(0.00135, 0.0018)
+    angle = random.uniform(0, 2 * math.pi)
+    
+    lat_offset = radius * math.cos(angle)
+    lng_offset = radius * math.sin(angle)
+    
+    return lat + lat_offset, lng + lng_offset
 
 @bot.message_handler(commands=['add'])
 def start_add_flow(message):
