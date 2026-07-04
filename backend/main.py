@@ -35,6 +35,16 @@ def init_db():
             expires_at DATETIME
         )
     """)
+    # Таблица жалоб
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            listing_id INTEGER,
+            reason TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (listing_id) REFERENCES listings(id)
+        )
+    """)
     # Проверка на наличие столбца status
     cursor.execute("PRAGMA table_info(listings)")
     columns = [row[1] for row in cursor.fetchall()]
