@@ -129,18 +129,21 @@ async def report_listing(listing_id: int, reason: str):
 # API (оставляем без изменений)
 # ...
 
+# API (оставляем без изменений)
+# ...
+
 # Статика и маршрутизация
 @app.get("/")
 async def get_home():
-    return FileResponse(os.path.join(FRONTEND_DIR, "home.html"))
+    return FileResponse(os.path.join(FRONTEND_DIR, "landing.html"))
 
 @app.get("/xarita")
 async def get_map():
     return FileResponse(os.path.join(FRONTEND_DIR, "map.html"))
 
+# Монтируем статику с префиксом /static, чтобы не перекрывать корни
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-# Для поддержки путей, если понадобятся еще
 
 if __name__ == "__main__":
     import uvicorn
