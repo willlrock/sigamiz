@@ -43,7 +43,10 @@ def init_db():
 
 init_db()
 
-# Монтирование
+# Монтирование API и статики
+# Важно: API должны быть определены раньше, или app.mount должен стоять ПОСЛЕ них, 
+# чтобы статика не перехватывала запросы к /api/
+
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
