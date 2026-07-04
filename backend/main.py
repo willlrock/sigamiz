@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 import sqlite3
 import os
 from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = FastAPI()
 
@@ -51,6 +52,21 @@ def init_db():
     conn.close()
 
 init_db()
+
+# Функция очистки устаревших объявлений
+def delete_expired_listings():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    now = datetime.now()
+    cursor.execute("DELETE FROM listings WHERE expires_at < ?", (now,))
+    conn.commit()
+    conn.close()
+    print(f"[{now}] Очистка старых объявлений выполнена.")
+
+# Запуск планировщика
+scheduler = BackgroundScheduler()
+scheduler.add_job(delete_expired_listings, 'interval', days=1)
+scheduler.start()
 
 # API
 @app.get("/api/listings")
