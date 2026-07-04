@@ -5,16 +5,18 @@ import os
 
 app = FastAPI()
 
-# 1. Обслуживание статических фото (API)
-UPLOAD_DIR = "D:/Projects/sigamiz/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+# Используем относительные пути для контейнера
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-# 2. Обслуживание фронтенда
-FRONTEND_DIR = "D:/Projects/sigamiz/frontend"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Монтирование
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
-DB_PATH = "D:/Projects/sigamiz/backend/database.db"
+DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -53,10 +55,10 @@ def get_listing_detail(listing_id: int):
     return {
         "id": listing["id"],
         "price": listing["price_per_person"],
-        "photos": [p["file_path"].replace("D:/Projects/sigamiz/uploads", "/uploads") for p in photos],
+        "photos": [p["file_path"].replace(BASE_DIR, "").replace("\\", "/") for p in photos],
         "telegram_username": listing["telegram_username"]
     }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
