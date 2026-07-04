@@ -126,10 +126,21 @@ async def report_listing(listing_id: int, reason: str):
     conn.close()
     return {"message": "Жалоба принята"}
 
-# Статика и корень
+# API (оставляем без изменений)
+# ...
+
+# Статика и маршрутизация
+@app.get("/")
+async def get_home():
+    return FileResponse(os.path.join(FRONTEND_DIR, "home.html"))
+
+@app.get("/xarita")
+async def get_map():
+    return FileResponse(os.path.join(FRONTEND_DIR, "map.html"))
+
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+# Для поддержки путей, если понадобятся еще
 
 if __name__ == "__main__":
     import uvicorn
