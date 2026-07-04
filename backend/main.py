@@ -102,9 +102,19 @@ def get_listing_detail(listing_id: int):
 
 @app.post("/api/report")
 async def report_listing(listing_id: int, reason: str):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
+    # 1. Вставляем жалобу
     cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
+    # 2. Увеличиваем счетчик
+    cursor.execute("UPDATE listings SET report_count = report_count + 1 WHERE id = ?", (listing_id,))
+    # 3. Проверяем лимит
+    cursor.execute("SELECT report_count FROM listings WHERE id = ?", (listing_id,))
+    count = cursor.fetchone()[0]
+    if count >= 3:
+        cursor.execute("UPDATE listings SET status = 'hidden_pending_review' WHERE id = ?", (listing_id,))
+        print(f"Listing {listing_id} hidden due to reports.")
+    
     conn.commit()
     conn.close()
     return {"message": "Жалоба принята"}
