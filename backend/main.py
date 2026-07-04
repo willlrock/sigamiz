@@ -2,21 +2,50 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import sqlite3
 import os
+from datetime import datetime, timedelta
 
 app = FastAPI()
 
-# Используем относительные пути для контейнера
+# Базовый путь
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS listings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_user_id INTEGER,
+            telegram_username TEXT,
+            lat REAL,
+            lng REAL,
+            price_per_person INTEGER,
+            people_needed INTEGER,
+            has_wifi BOOLEAN,
+            has_ac BOOLEAN,
+            expires_at DATETIME
+        )
+    """)
+    # Засеиваем, если пусто
+    if cursor.execute("SELECT count(*) FROM listings").fetchone()[0] == 0:
+        expires_at = datetime.now() + timedelta(days=7)
+        cursor.execute("""
+            INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, has_wifi, has_ac, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (371445197, "Tameweezer", 41.2995, 69.2401, 1500000, 1, 1, 1, expires_at))
+    conn.commit()
+    conn.close()
+
+init_db()
+
 # Монтирование
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
-
-DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
