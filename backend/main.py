@@ -120,6 +120,9 @@ async def report_listing(listing_id: int, reason: str):
     return {"message": "Жалоба принята"}
 
 # Статика и корень
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
