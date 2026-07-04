@@ -6,30 +6,69 @@
 <title>klapa.net — Talabalar uchun sherik xaritasi</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
- :root{--primary:#00A35C; --surface:#FBFDF8; --on-surface:#191C1A;}
- body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--surface);color:var(--on-surface);margin:0;padding:20px;}
- .nav{display:flex;gap:20px;justify-content:center;margin-top:20px;}
- .nav a{text-decoration:none;color:var(--on-surface);font-weight:600;}
- .nav a.current{color:var(--primary);}
- .hero{padding:100px 20px;text-align:center;}
- h1{font-size:3rem;color:var(--primary);}
- .btn{background:var(--primary);color:#fff;padding:15px 30px;border-radius:99px;text-decoration:none;font-weight:700;}
+ :root{
+ --primary:#00A35C; --primary-dark:#00864B; --surface:#FBFDF8;
+ --surface-container:#F2F4EF; --on-surface:#191C1A; --on-surface-variant:#3D4A3F;
+ --outline:#E1E3E1; --chip-bg:#D7E8DE; --shadow-1:0 2px 8px rgba(25,28,26,0.06);
+ --shadow-2:0 6px 20px rgba(25,28,26,0.12); --shadow-3:0 12px 32px rgba(25,28,26,0.18);
+ --radius-pill:9999px;
+ }
+ *{box-sizing:border-box;}
+ body{margin:0;padding:0;font-family:'Plus Jakarta Sans',sans-serif;color:var(--on-surface);background:var(--surface);}
+
+ /* Хедер (как на карте) */
+ .topbar{
+ display:flex;align-items:center;gap:12px;
+ background:rgba(251,253,248,0.92); backdrop-filter:blur(10px);
+ padding:16px; border-radius:var(--radius-pill); box-shadow:var(--shadow-2);
+ margin:16px;
+ }
+ .brand{font-weight:700;font-size:18px;color:var(--primary-dark);flex:1;}
+ 
+ /* Контент */
+ .hero{padding:60px 20px;text-align:center;}
+ h1{font-size:2.5rem;color:var(--primary);margin-bottom:20px;}
+ .btn{background:var(--primary);color:#fff;padding:15px 30px;border-radius:var(--radius-pill);text-decoration:none;font-weight:700;display:inline-block;}
+
+ /* Сайдбар стили (из map.html) */
+ .sidebar-toggle{background:none;border:none;cursor:pointer;width:28px;height:28px;display:flex;flex-direction:column;justify-content:center;gap:5px;}
+ .bar{width:20px;height:2px;background:var(--primary-dark);border-radius:2px;}
+ .sidebar{position:fixed;top:0;left:0;bottom:0;width:280px;background:var(--surface);z-index:2600;box-shadow:var(--shadow-3);transform:translateX(-100%);transition:transform .2s ease;padding:20px;}
+ .sidebar.open{transform:translateX(0);}
+ .sidebar-overlay{position:fixed;inset:0;background:rgba(25,28,26,0.4);z-index:2500;display:none;}
+ .sidebar-overlay.open{display:block;}
+ .sidebar-nav a{display:block;padding:12px 14px;color:var(--on-surface);text-decoration:none;font-weight:600;border-radius:0.75rem;}
+ .sidebar-nav a.current{background:var(--chip-bg);color:var(--primary-dark);}
 </style>
 </head>
 <body>
-<nav class="nav">
+
+<div class="topbar">
+ <button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.add('open');document.getElementById('sidebarOverlay').classList.add('open')">
+ <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+ </button>
+ <div class="brand">klapa.net</div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="this.classList.remove('open');document.getElementById('sidebar').classList.remove('open')"></div>
+<div class="sidebar" id="sidebar">
+ <div class="sidebar-brand"><div class="brand">klapa.net</div><button onclick="document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open')" style="background:none;border:none;font-size:18px;">✕</button></div>
+ <nav class="sidebar-nav">
  <a href="/" class="current">Asosiy</a>
  <a href="/xarita">Xarita</a>
  <a href="/elonlar">E'lonlar</a>
  <a href="/qanday-ishlaydi">Qanday ishlaydi</a>
  <a href="/qoidalar">Qoidalar</a>
  <a href="/savollar">Savollar</a>
-</nav>
+ </nav>
+</div>
+
 <div class="hero">
  <h1>klapa.net</h1>
- <p>Talabalar uchun sherik topish xizmati. O'zingizga mos xonadoshni xarita orqali qidiring.</p>
- <br><br>
+ <p>Talabalar uchun sherik topish xizmati.</p>
+ <br>
  <a href="/xarita" class="btn">Xaritani ochish</a>
 </div>
+
 </body>
 </html>
