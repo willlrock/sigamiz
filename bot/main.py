@@ -96,12 +96,22 @@ def handle_photos(message):
 @bot.message_handler(state=AddListingStates.photos, commands=['done'])
 def save_listing(message):
     with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        # Подготовка удобств
+        amenities = data.get('amenities', [])
+        has_wifi = 1 if "Wi-Fi" in amenities else 0
+        has_ac = 1 if "AC" in amenities else 0
+        has_washing_machine = 1 if "Washer" in amenities else 0
+        no_landlord_in_yard = 1 if "No Landlord" in amenities else 0
+        near_metro = 1 if "Metro" in amenities else 0
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
-        """, (message.from_user.id, message.from_user.username or "none", data['lat'], data['lng'], data['price'], data['needed']))
+            INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, 
+                                  has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
+        """, (message.from_user.id, message.from_user.username or "none", data['lat'], data['lng'], 
+              data['price'], data['needed'], has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro))
         listing_id = cursor.lastrowid
         
         os.makedirs(f"{UPLOAD_DIR}/{listing_id}", exist_ok=True)
