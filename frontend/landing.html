@@ -110,7 +110,7 @@
  .hero-visual{
  position:relative;border-radius:1.5rem;overflow:hidden;box-shadow:var(--shadow-3);
  border:1px solid var(--outline);background:var(--surface-container-high);
- aspect-ratio:4/3.2;
+ aspect-ratio:4/3.2; display: block; text-decoration: none;
  }
  .hero-visual img{width:100%;height:100%;object-fit:cover;}
  .hero-visual::after{
@@ -290,7 +290,7 @@
  <div class="stat-block"><div class="num">100%</div><div class="label">Bepul xizmat</div></div>
  </div>
  </div>
- <div class="hero-visual">
+ <a class="hero-visual" href="/xarita">
  <img alt="Toshkent xaritasi" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgcP9Uz7k7m40kjOaRVWzt5ETO9c7ELSacGKM9Na15lruuhZS3c5V7qZXNjJh59ucqRb6gUE0XwVXQDOrKqaVamJIJcb5gbdyfbiBPK6eWDqKBOnzibqepnx4EO8ZkHQHTJaU-a_m0Vknt6XE6SGHZrmVeky2FcnnA_tgwbtDFlnw3kEPxyWVZIArnByfpADrp4qF32km80MVgdDstG3nUIUAxS3M8T4-2TkTOUIkvIi4ve9m1WA66suY6vHPJUOX4UEQvaOfvj6yh">
  <div class="hero-pin" style="top:22%;left:28%;">850k so'm</div>
  <div class="hero-pin alt" style="top:48%;right:20%;">600k so'm</div>
@@ -301,7 +301,7 @@
  </div>
  <div class="price">750k</div>
  </div>
- </div>
+ </a>
  </div>
 </section>
 
@@ -524,7 +524,9 @@ document.getElementById('langBtn').addEventListener('click', () => {
  const cur = document.getElementById('langCurrent');
  cur.textContent = (cur.textContent === 'UZ') ? 'RU' : 'UZ';
 });
-document.getElementById('videoBtn').addEventListener('click', () => showToast("Video qo'llanma tez orada qo'shiladi."));
+document.getElementById('videoBtn').addEventListener('click', () => {
+ window.location.href = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+});
 
 function showToast(msg){
  const t = document.getElementById('toast');
