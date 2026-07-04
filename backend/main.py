@@ -63,6 +63,7 @@ def get_db():
 def get_listings():
     conn = get_db()
     cursor = conn.cursor()
+    # Добавляем необходимые поля: university, has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro
     listings = cursor.execute("SELECT * FROM listings WHERE status = 'active'").fetchall()
     
     results = []
@@ -72,7 +73,13 @@ def get_listings():
             "lat": row["lat"],
             "lng": row["lng"],
             "price": row["price_per_person"],
-            "people_needed": row["people_needed"]
+            "people_needed": row["people_needed"],
+            "has_wifi": row["has_wifi"],
+            "has_ac": row["has_ac"],
+            "has_washing_machine": row["has_washing_machine"],
+            "no_landlord_in_yard": row["no_landlord_in_yard"],
+            "near_metro": row["near_metro"],
+            "status": row["status"]
         })
     conn.close()
     return results
