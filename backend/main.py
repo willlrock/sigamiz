@@ -43,10 +43,10 @@ def delete_expired_listings():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     now = datetime.now()
-    cursor.execute("DELETE FROM listings WHERE expires_at < ?", (now,))
+    cursor.execute("UPDATE listings SET status = 'expired' WHERE expires_at < ?", (now,))
     conn.commit()
     conn.close()
-    print(f"[{now}] Очистка старых объявлений выполнена.")
+    print(f"[{now}] Пометка старых объявлений как 'expired' выполнена.")
 
 # Запуск планировщика
 scheduler = BackgroundScheduler()
