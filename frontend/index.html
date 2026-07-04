@@ -35,9 +35,24 @@
                 <h3>Listing #${data.id}</h3>
                 <p>Price: ${data.price} UZS</p>
                 <div>${data.photos.map(p => `<img src="${p}" style="max-width:200px; margin:5px;">`).join('')}</div>
-                <a href="https://t.me/${data.telegram_username}" target="_blank">Message ${data.telegram_username}</a>
+                <p>
+                    <a href="https://t.me/${data.telegram_username}" target="_blank">Message ${data.telegram_username}</a>
+                </p>
+                <button onclick="reportListing(${data.id})">Пожаловаться</button>
             `;
             document.getElementById('modal').style.display = 'block';
+        }
+
+        async function reportListing(id) {
+            const reason = prompt("Причина жалобы:");
+            if (reason) {
+                const response = await fetch(`/api/report?listing_id=${id}&reason=${encodeURIComponent(reason)}`, { method: 'POST' });
+                if (response.ok) {
+                    alert("Жалоба принята");
+                } else {
+                    alert("Ошибка при отправке жалобы");
+                }
+            }
         }
 
         async function fetchListings() {
