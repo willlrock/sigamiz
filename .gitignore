@@ -1,0 +1,12 @@
+# Python/venv
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Data & Config
+backend/database.db
+.env
+uploads/
+.DS_Store
