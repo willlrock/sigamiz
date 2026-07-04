@@ -20,38 +20,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS listings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_user_id INTEGER,
-            telegram_username TEXT,
-            lat REAL,
-            lng REAL,
-            price_per_person INTEGER,
-            people_needed INTEGER,
-            has_wifi BOOLEAN,
-            has_ac BOOLEAN,
-            status TEXT DEFAULT 'active',
-            expires_at DATETIME
-        )
-    """)
-    # Таблица жалоб
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            listing_id INTEGER,
-            reason TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (listing_id) REFERENCES listings(id)
-        )
-    """)
-    # Проверка на наличие столбца status
-    cursor.execute("PRAGMA table_info(listings)")
-    columns = [row[1] for row in cursor.fetchall()]
-    if 'status' not in columns:
-        cursor.execute("ALTER TABLE listings ADD COLUMN status TEXT DEFAULT 'active'")
+    
+    # Читаем схему из файла и выполняем
+    with open(os.path.join(BASE_DIR, "backend", "schema.sql"), "r", encoding="utf-8") as f:
+        schema = f.read()
+    cursor.executescript(schema)
         
-    # Засеиваем, если пусто
+    # Засеиваем тестовыми данными, если пусто
     if cursor.execute("SELECT count(*) FROM listings").fetchone()[0] == 0:
         expires_at = datetime.now() + timedelta(days=7)
         cursor.execute("""
