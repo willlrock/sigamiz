@@ -10,8 +10,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
-DB_PATH = "D:/Projects/sigamiz/backend/database.db"
-UPLOAD_DIR = "D:/Projects/sigamiz/uploads"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
 storage = StateMemoryStorage()
 bot = telebot.TeleBot(TOKEN, state_storage=storage)
