@@ -79,43 +79,6 @@ scheduler.add_job(delete_expired_listings, 'interval', days=1)
 scheduler.start()
 
 # API
-@app.get("/api/listings")
-async def get_listings():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, lat, lng, price_per_person, people_needed FROM listings WHERE status = 'active'")
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"id": r[0], "lat": r[1], "lng": r[2], "price": r[3], "people_needed": r[4]} for r in rows]
-
-@app.get("/api/listings/{id}")
-async def get_listing(id: int):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM listings WHERE id = ?", (id,))
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        return {"id": row[0], "telegram_username": row[2], "price": row[5], "photos": []}
-    return {"error": "Not found"}
-
-@app.post("/api/report")
-async def report_listing(listing_id: int, reason: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
-    conn.commit()
-    conn.close()
-    return {"message": "Жалоба принята"}
-
-# Статика и корень
-@app.get("/")
-async def read_index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
-
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -147,7 +110,12 @@ def get_listing_detail(listing_id: int):
     if not listing:
         return {"error": "Not found"}
     
-    photos = cursor.execute("SELECT file_path FROM listing_photos WHERE listing_id = ?", (listing_id,)).fetchall()
+    # Предполагаем, что таблица listing_photos существует
+    photos = []
+    try:
+        photos = cursor.execute("SELECT file_path FROM listing_photos WHERE listing_id = ?", (listing_id,)).fetchall()
+    except sqlite3.OperationalError:
+        pass # Таблица может отсутствовать
     conn.close()
     
     return {
@@ -156,6 +124,17 @@ def get_listing_detail(listing_id: int):
         "photos": [p["file_path"].replace(BASE_DIR, "").replace("\\", "/") for p in photos],
         "telegram_username": listing["telegram_username"]
     }
+
+@app.post("/api/report")
+async def report_listing(listing_id: int, reason: str):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
+    conn.commit()
+    conn.close()
+    return {"message": "Жалоба принята"}
+
+# Статика и корень
 
 if __name__ == "__main__":
     import uvicorn
