@@ -99,6 +99,15 @@ async def get_listing(id: int):
         return {"id": row[0], "telegram_username": row[2], "price": row[5], "photos": []}
     return {"error": "Not found"}
 
+@app.post("/api/report")
+async def report_listing(listing_id: int, reason: str):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
+    conn.commit()
+    conn.close()
+    return {"message": "Жалоба принята"}
+
 # Статика и корень
 @app.get("/")
 async def read_index():
