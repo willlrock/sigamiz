@@ -43,17 +43,10 @@
         async function fetchListings() {
             const response = await fetch('/api/listings');
             const data = await response.json();
-            console.log("Данные от API:", data);
             
             data.forEach(item => {
-                // Делаем маркер огромным, чтобы точно заметить
-                const circle = L.circle([item.lat, item.lng], {
-                    color: 'red',
-                    fillColor: '#f03',
-                    fillOpacity: 0.8,
-                    radius: 2000 
-                }).addTo(map);
-                circle.on('click', () => showDetails(item.id));
+                const marker = L.marker([item.lat, item.lng]).addTo(map);
+                marker.on('click', () => showDetails(item.id));
             });
         }
         fetchListings();
