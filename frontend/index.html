@@ -65,12 +65,12 @@
  .btn-add:hover{background:var(--primary-dark);}
  .btn-add:active{transform:scale(0.97);}
 
- /* ---------- Filter chips ---------- */
- .filters{
+ /* ---------- Filters button + fly-out panel ---------- */
+ .filters-wrap{
  position:fixed;top:74px;left:16px;z-index:1000;
- display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 32px);
+ display:flex;align-items:flex-start;gap:8px;
  }
- .chip{
+ .filters-btn{
  background:rgba(251,253,248,0.95);
  backdrop-filter:blur(6px);
  border:1px solid var(--outline);
@@ -79,11 +79,81 @@
  padding:8px 14px;border-radius:var(--radius-pill);
  cursor:pointer;display:flex;align-items:center;gap:6px;
  box-shadow:var(--shadow-1);
- transition:all .15s ease;
+ transition:border-color .15s ease;
  user-select:none;
+ flex-shrink:0;
  }
- .chip:hover{border-color:var(--primary);}
- .chip.active{background:var(--chip-bg-active);color:#fff;border-color:var(--chip-bg-active);}
+ .filters-btn:hover{border-color:var(--primary);}
+
+ .filters-panel{
+ display:flex;gap:8px;flex-wrap:wrap;
+ max-width:0;overflow:hidden;opacity:0;
+ transition:max-width .25s ease, opacity .2s ease;
+ }
+ .filters-panel.open{max-width:900px;opacity:1;}
+ .filters-panel .chip{
+ background:rgba(251,253,248,0.95);
+ backdrop-filter:blur(6px);
+ border:1px solid var(--outline);
+ color:var(--on-surface-variant);
+ font-family:inherit;font-size:13px;font-weight:600;
+ padding:8px 14px;border-radius:var(--radius-pill);
+ cursor:pointer;display:flex;align-items:center;gap:6px;
+ box-shadow:var(--shadow-1);
+ transition:all .15s ease, transform .2s ease;
+ user-select:none;
+ white-space:nowrap;
+ flex-shrink:0;
+ transform:scale(0.85);
+ opacity:0;
+ }
+ .filters-panel.open .chip{transform:scale(1);opacity:1;}
+ .filters-panel.open .chip:nth-child(1){transition-delay:.02s;}
+ .filters-panel.open .chip:nth-child(2){transition-delay:.06s;}
+ .filters-panel.open .chip:nth-child(3){transition-delay:.10s;}
+ .filters-panel.open .chip:nth-child(4){transition-delay:.14s;}
+ .filters-panel.open .chip:nth-child(5){transition-delay:.18s;}
+ .filters-panel .chip:hover{border-color:var(--primary);}
+ .filters-panel .chip.active{background:var(--chip-bg-active);color:#fff;border-color:var(--chip-bg-active);}
+
+ /* ---------- Sidebar ---------- */
+ .sidebar-toggle{
+ background:none;border:none;cursor:pointer;padding:0;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ width:28px;height:28px;flex-shrink:0;gap:5px;
+ }
+ .sidebar-toggle .bar{
+ width:20px;height:2px;background:var(--primary-dark);border-radius:2px;
+ transition:transform .25s ease, opacity .2s ease;
+ }
+ .sidebar-toggle.open .bar1{transform:translateY(7px) rotate(45deg);}
+ .sidebar-toggle.open .bar2{opacity:0;}
+ .sidebar-toggle.open .bar3{transform:translateY(-7px) rotate(-45deg);}
+ .sidebar-overlay{
+ position:fixed;inset:0;background:rgba(25,28,26,0.4);z-index:2500;
+ display:none;
+ }
+ .sidebar-overlay.open{display:block;}
+ .sidebar{
+ position:fixed;top:0;left:0;bottom:0;width:280px;
+ background:var(--surface);z-index:2600;
+ box-shadow:var(--shadow-3);
+ transform:translateX(-100%);transition:transform .2s ease;
+ display:flex;flex-direction:column;padding:20px;
+ }
+ .sidebar.open{transform:translateX(0);}
+ .sidebar-brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+ .sidebar-brand .brand{font-size:18px;}
+ .sidebar-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--on-surface-variant);}
+ .sidebar-nav{display:flex;flex-direction:column;gap:2px;}
+ .sidebar-nav a{
+ display:block;padding:12px 14px;border-radius:0.75rem;
+ color:var(--on-surface);text-decoration:none;font-weight:600;font-size:15px;
+ transition:background .15s ease;
+ }
+ .sidebar-nav a:hover{background:var(--surface-container);}
+ .sidebar-nav a.current{background:var(--chip-bg);color:var(--primary-dark);}
+ .sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--outline);}
 
  /* ---------- Legend ---------- */
  .legend{
@@ -166,7 +236,7 @@
  .btn-add{order:2;margin-left:auto;}
  .search{order:3;width:100%;}
  .stat{display:none;}
- .filters{top:120px;}
+ .filters-wrap{top:120px;}
  .modal{max-width:100%;}
  }
 </style>
@@ -176,10 +246,12 @@
 <div id="map"></div>
 
 <div class="topbar">
- <div class="brand">
- <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 8.5V22H9V14H15V22H22V8.5L12 2Z" fill="#00A35C"/></svg>
- klapa.net
- </div>
+ <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Menyuni ochish">
+ <span class="bar bar1"></span>
+ <span class="bar bar2"></span>
+ <span class="bar bar3"></span>
+ </button>
+ <div class="brand">klapa.net</div>
  <div class="search">
  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
  <input type="text" id="searchInput" placeholder="Universitet yoki tuman qidirish...">
@@ -191,12 +263,37 @@
  </a>
 </div>
 
-<div class="filters" id="filters">
+<div class="filters-wrap">
+ <button class="filters-btn" id="filtersBtn" onclick="toggleFiltersPanel()">
+ <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="14" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="8" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="16" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+ Filters
+ </button>
+ <div class="filters-panel" id="filtersPanel">
  <div class="chip" data-filter="has_wifi">📶 Wi-Fi</div>
  <div class="chip" data-filter="has_ac">❄️ Kondёr</div>
  <div class="chip" data-filter="has_washing_machine">🧺 Kir yuvish</div>
  <div class="chip" data-filter="no_landlord_in_yard">🏡 Xo'jayinsiz</div>
  <div class="chip" data-filter="near_metro">🚇 Metro yaqin</div>
+ </div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+ <div class="sidebar-brand">
+ <div class="brand">klapa.net</div>
+ <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+ </div>
+ <nav class="sidebar-nav">
+ <a href="/" class="current">Asosiy</a>
+ <a href="/xarita">Xarita</a>
+ <a href="/elonlar">E'lonlar</a>
+ <a href="/qanday-ishlaydi">Qanday ishlaydi</a>
+ <a href="/qoidalar">Qoidalar</a>
+ <a href="/savollar">Savollar</a>
+ </nav>
+ <div class="sidebar-footer">
+ <a class="btn-add" style="width:100%;justify-content:center;" href="https://t.me/klapa_net_bot?start=add" target="_blank">Joy qo'shish</a>
+ </div>
 </div>
 
 <div class="legend">
@@ -285,7 +382,7 @@ function renderMarkers(){
 }
 
 // ---------- Filters ----------
-document.querySelectorAll('.chip').forEach(chip => {
+document.querySelectorAll('.filters-panel .chip').forEach(chip => {
  chip.addEventListener('click', () => {
  const key = chip.dataset.filter;
  if(activeFilters.has(key)){ activeFilters.delete(key); chip.classList.remove('active'); }
@@ -293,6 +390,28 @@ document.querySelectorAll('.chip').forEach(chip => {
  renderMarkers();
  });
 });
+
+function toggleFiltersPanel(){
+ document.getElementById('filtersPanel').classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+ const wrap = document.querySelector('.filters-wrap');
+ if(wrap && !wrap.contains(e.target)){
+ document.getElementById('filtersPanel').classList.remove('open');
+ }
+});
+
+// ---------- Sidebar ----------
+function toggleSidebar(){
+ document.getElementById('sidebar').classList.toggle('open');
+ document.getElementById('sidebarOverlay').classList.toggle('open');
+ document.getElementById('sidebarToggle').classList.toggle('open');
+}
+function closeSidebar(){
+ document.getElementById('sidebar').classList.remove('open');
+ document.getElementById('sidebarOverlay').classList.remove('open');
+ document.getElementById('sidebarToggle').classList.remove('open');
+}
 
 // ---------- Modal ----------
 let currentPhotoIndex = 0;
@@ -337,7 +456,7 @@ function renderCarousel(){
 function closeModal(){
  document.getElementById('overlay').classList.remove('open');
 }
-document.getElementById('overlay').addEventListener('click', (e) => {
+document.addEventListener('click', (e) => {
  if(e.target.id === 'overlay') closeModal();
 });
 
