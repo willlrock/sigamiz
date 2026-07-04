@@ -5,7 +5,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         #map { height: 100vh; width: 100%; }
-        .filter-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; }
+        .filter-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; border-radius: 8px; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; z-index: 2000; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.5); max-width: 90%; max-height: 90%; overflow-y: auto; }
+        .close-btn { cursor: pointer; float: right; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -14,20 +16,37 @@
         <button onclick="fetchListings()">Refresh Map</button>
     </div>
     <div id="map"></div>
+    <div id="modal" class="modal">
+        <span class="close-btn" onclick="document.getElementById('modal').style.display='none'">×</span>
+        <div id="modal-content"></div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const map = L.map('map').setView([41.2995, 69.2401], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+        async function showDetails(id) {
+            const response = await fetch(`/api/listings/${id}`);
+            const data = await response.json();
+            
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <h3>Listing #${data.id}</h3>
+                <p>Price: ${data.price} UZS</p>
+                <div>${data.photos.map(p => `<img src="${p}" style="max-width:200px; margin:5px;">`).join('')}</div>
+                <a href="https://t.me/${data.telegram_username}" target="_blank">Message ${data.telegram_username}</a>
+            `;
+            document.getElementById('modal').style.display = 'block';
+        }
+
         async function fetchListings() {
             const response = await fetch('/api/listings');
             const data = await response.json();
             
             data.forEach(item => {
-                L.marker([item.lat, item.lng])
-                    .addTo(map)
-                    .bindPopup(`Price: ${item.price} UZS<br>Roommates needed: ${item.people_needed}<br><a href="/api/listings/${item.id}">View Details</a>`);
+                const marker = L.marker([item.lat, item.lng]).addTo(map);
+                marker.on('click', () => showDetails(item.id));
             });
         }
         fetchListings();
