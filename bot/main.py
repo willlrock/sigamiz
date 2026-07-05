@@ -49,6 +49,10 @@ def is_banned(user_id):
     conn.close()
     return res is not None
 
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "Welcome! Use /add to create a listing or /my to view your listings.")
+
 @bot.message_handler(commands=['add'])
 def start_add_flow(message):
     if is_banned(message.from_user.id):
