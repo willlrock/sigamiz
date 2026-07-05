@@ -1,6 +1,6 @@
 -- schema.sql для klapa.net
 
-CREATE TABLE listings (
+CREATE TABLE IF NOT EXISTS listings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     telegram_user_id INTEGER NOT NULL,
     telegram_username TEXT NOT NULL,
@@ -20,14 +20,14 @@ CREATE TABLE listings (
     expires_at DATETIME NOT NULL
 );
 
-CREATE TABLE listing_photos (
+CREATE TABLE IF NOT EXISTS listing_photos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
     file_path TEXT NOT NULL,
     sort_order INTEGER DEFAULT 0
 );
 
-CREATE TABLE reports (
+CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     listing_id INTEGER NOT NULL REFERENCES listings(id),
     reporter_telegram_id INTEGER,
@@ -35,7 +35,7 @@ CREATE TABLE reports (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE banned_users (
+CREATE TABLE IF NOT EXISTS banned_users (
     telegram_user_id INTEGER PRIMARY KEY,
     reason TEXT,
     banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
