@@ -129,10 +129,17 @@ def save_listing(message):
         os.makedirs(f"{UPLOAD_DIR}/{listing_id}", exist_ok=True)
         for i, file_id in enumerate(data['photos']):
             file_info = bot.get_file(file_id)
+from PIL import Image
+import io
+...
             downloaded_file = bot.download_file(file_info.file_path)
+            img = Image.open(io.BytesIO(downloaded_file))
+            if img.width > 1200:
+                ratio = 1200 / float(img.width)
+                height = int(float(img.height) * float(ratio))
+                img = img.resize((1200, height), Image.Resampling.LANCZOS)
             file_path = f"{UPLOAD_DIR}/{listing_id}/{i}.jpg"
-            with open(file_path, 'wb') as new_file:
-                new_file.write(downloaded_file)
+            img.save(file_path, 'JPEG', quality=80)
             cursor.execute("INSERT INTO listing_photos (listing_id, file_path) VALUES (?, ?)", (listing_id, file_path))
         
         conn.commit()
