@@ -1,5 +1,8 @@
 # klapa.net - Student Roommate Map
 
+### Testing
+Testing automatic deployment updates.
+
 A free, map-based tool for Tashkent students to find a roommate.
 
 ## Project Structure
