@@ -3,6 +3,8 @@ import random
 import sqlite3
 import telebot
 import requests
+import io
+from PIL import Image
 from telebot import custom_filters, types
 from telebot.handler_backends import State, StatesGroup
 from telebot.storage import StateMemoryStorage
@@ -129,9 +131,6 @@ def save_listing(message):
         os.makedirs(f"{UPLOAD_DIR}/{listing_id}", exist_ok=True)
         for i, file_id in enumerate(data['photos']):
             file_info = bot.get_file(file_id)
-from PIL import Image
-import io
-...
             downloaded_file = bot.download_file(file_info.file_path)
             img = Image.open(io.BytesIO(downloaded_file))
             if img.width > 1200:
