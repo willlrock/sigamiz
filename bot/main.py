@@ -21,6 +21,7 @@ bot = telebot.TeleBot(TOKEN, state_storage=storage)
 
 class AddListingStates(StatesGroup):
     location = State()
+    university = State()
     price = State()
     roommates_needed = State()
     amenities = State()
@@ -68,12 +69,26 @@ def handle_location(message):
         print(f"DEBUG: Received location from {message.from_user.id}")
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data['lat'], data['lng'] = blur_location(message.location.latitude, message.location.longitude)
-        print("DEBUG: Location stored. Prompting for price.")
-        bot.send_message(message.chat.id, "Price per person (UZS):")
-        bot.set_state(message.from_user.id, AddListingStates.price, message.chat.id)
+        
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        universities = ["TATU", "WIUT", "INHA", "O'zMU", "TMI", "TDIU", "TSUULL", "TTA", "Other"]
+        for uni in universities:
+            markup.add(types.InlineKeyboardButton(uni, callback_data=f"uni_{uni}"))
+        
+        bot.send_message(message.chat.id, "Select your university:", reply_markup=markup)
+        bot.set_state(message.from_user.id, AddListingStates.university, message.chat.id)
     except Exception as e:
         print(f"ERROR in handle_location: {traceback.format_exc()}")
         bot.reply_to(message, "An error occurred. Please try again later.")
+
+@bot.callback_query_handler(state=AddListingStates.university, func=lambda call: call.data.startswith("uni_"))
+def handle_university(call):
+    uni = call.data.split("_")[1]
+    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        data['university'] = uni
+    bot.edit_message_text(f"University saved: {uni}", call.message.chat.id, call.message.message_id)
+    bot.send_message(call.message.chat.id, "Price per person (UZS):")
+    bot.set_state(call.from_user.id, AddListingStates.price, call.message.chat.id)
 
 @bot.message_handler(state=AddListingStates.price, is_digit=True)
 def handle_price(message):
