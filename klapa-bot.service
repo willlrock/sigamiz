@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/var/www/sigamiz
-ExecStart=/usr/bin/python3 bot/main.py
+WorkingDirectory=/home/admn/sigamiz
+ExecStart=/home/admn/sigamiz/venv/bin/python3 bot/main.py
 Restart=always
 
 [Install]
