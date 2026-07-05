@@ -171,7 +171,37 @@ def handle_confirm(call):
 def save_listing_to_db(user_id, chat_id):
     with bot.retrieve_data(user_id, chat_id) as data:
         amenities = data.get('amenities', [])
-        # ... (rest of the DB logic)
+        has_wifi = 1 if "Wi-Fi" in amenities else 0
+        has_ac = 1 if "AC" in amenities else 0
+        has_washing_machine = 1 if "Washer" in amenities else 0
+        no_landlord_in_yard = 1 if "No Landlord" in amenities else 0
+        near_metro = 1 if "Metro" in amenities else 0
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO listings (telegram_user_id, telegram_username, university, lat, lng, price_per_person, people_needed, 
+                                  has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
+        """, (user_id, "none", data.get('university'), data['lat'], data['lng'], 
+              data['price'], data['needed'], has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro))
+        listing_id = cursor.lastrowid
+        
+        os.makedirs(f"{UPLOAD_DIR}/{listing_id}", exist_ok=True)
+        for i, file_id in enumerate(data['photos']):
+            file_info = bot.get_file(file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            img = Image.open(io.BytesIO(downloaded_file))
+            if img.width > 1200:
+                ratio = 1200 / float(img.width)
+                height = int(float(img.height) * float(ratio))
+                img = img.resize((1200, height), Image.Resampling.LANCZOS)
+            file_path = f"{UPLOAD_DIR}/{listing_id}/{i}.jpg"
+            img.save(file_path, 'JPEG', quality=80)
+            cursor.execute("INSERT INTO listing_photos (listing_id, file_path) VALUES (?, ?)", (listing_id, file_path))
+        
+        conn.commit()
+        conn.close()
 
 @bot.message_handler(commands=['my'])
 def my_listings(message):
