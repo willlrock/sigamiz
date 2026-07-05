@@ -7,7 +7,7 @@ import io
 from PIL import Image
 from telebot import custom_filters, types
 from telebot.handler_backends import State, StatesGroup
-from telebot.storage import StateMemoryStorage
+from telebot.storage import StateSqlite3Storage
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
-storage = StateMemoryStorage()
+storage = StateSqlite3Storage(db_path=os.path.join(BASE_DIR, "backend", "state.db"))
 bot = telebot.TeleBot(TOKEN, state_storage=storage)
 
 class AddListingStates(StatesGroup):
