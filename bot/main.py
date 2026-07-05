@@ -156,8 +156,6 @@ def save_listing(message):
         conn.close()
     
     bot.reply_to(message, "Listing created successfully!")
-    print("Bot started...")
-bot.infinity_polling()
 
 @bot.message_handler(commands=['my'])
 def my_listings(message):
@@ -190,11 +188,14 @@ def handle_manage_listing(call):
     action, listing_id = call.data.split('_')
     conn = sqlite3.connect(DB_PATH)
     if action == 'del':
-        conn.execute("UPDATE listings SET status = 'deleted' WHERE id = ?", (listing_id,))
-        bot.answer_callback_query(call.id, "Deleted.")
+        conn.execute("UPDATE listings SET status = 'removed' WHERE id = ?", (listing_id,))
+        bot.answer_callback_query(call.id, "Removed.")
     elif action == 'ext':
         conn.execute("UPDATE listings SET expires_at = datetime('now', '+7 days') WHERE id = ?", (listing_id,))
         bot.answer_callback_query(call.id, "Extended.")
     conn.commit()
     conn.close()
     bot.edit_message_text("Updated.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+
+print("Bot started...")
+bot.infinity_polling()
