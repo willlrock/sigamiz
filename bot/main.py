@@ -39,8 +39,19 @@ def blur_location(lat, lng):
     
     return lat + lat_offset, lng + lng_offset
 
+def is_banned(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM banned_users WHERE telegram_user_id = ?", (user_id,))
+    res = cursor.fetchone()
+    conn.close()
+    return res is not None
+
 @bot.message_handler(commands=['add'])
 def start_add_flow(message):
+    if is_banned(message.from_user.id):
+        bot.reply_to(message, "You are banned from adding listings.")
+        return
     bot.set_state(message.from_user.id, AddListingStates.location, message.chat.id)
     bot.reply_to(message, "Please send your location.")
 
