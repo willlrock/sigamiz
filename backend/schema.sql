@@ -30,7 +30,7 @@ CREATE TABLE listing_photos (
 CREATE TABLE reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     listing_id INTEGER NOT NULL REFERENCES listings(id),
-    reporter_telegram_id INTEGER NOT NULL,
+    reporter_telegram_id INTEGER,
     reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
