@@ -141,6 +141,35 @@ def save_listing(message):
     bot.reply_to(message, "Listing created successfully!")
     bot.delete_state(message.from_user.id, message.chat.id)
 
-if __name__ == "__main__":
-    bot.add_custom_filter(custom_filters.StateFilter(bot))
-    bot.infinity_polling()
+@bot.message_handler(commands=['my'])
+def my_listings(message):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    listings = cursor.execute("SELECT * FROM listings WHERE telegram_user_id = ? AND status != 'expired'", (message.from_user.id,)).fetchall()
+    conn.close()
+
+    if not listings:
+        bot.reply_to(message, "You don't have any active listings.")
+        return
+
+    for listing in listings:
+        text = f"Listing ID: {listing['id']}\nPrice: {listing['price_per_person']}\nStatus: {listing['status']}"
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Delete", callback_data=f"del_{listing['id']}"))
+        markup.add(types.InlineKeyboardButton("Extend 7 days", callback_data=f"ext_{listing['id']}"))
+        bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(('del_', 'ext_')))
+def handle_manage_listing(call):
+    action, listing_id = call.data.split('_')
+    conn = sqlite3.connect(DB_PATH)
+    if action == 'del':
+        conn.execute("UPDATE listings SET status = 'deleted' WHERE id = ?", (listing_id,))
+        bot.answer_callback_query(call.id, "Deleted.")
+    elif action == 'ext':
+        conn.execute("UPDATE listings SET expires_at = datetime('now', '+7 days') WHERE id = ?", (listing_id,))
+        bot.answer_callback_query(call.id, "Extended.")
+    conn.commit()
+    conn.close()
+    bot.edit_message_text("Updated.", chat_id=call.message.chat.id, message_id=call.message.message_id)
