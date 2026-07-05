@@ -149,7 +149,8 @@ def save_listing(message):
         conn.close()
     
     bot.reply_to(message, "Listing created successfully!")
-    bot.delete_state(message.from_user.id, message.chat.id)
+    print("Bot started...")
+bot.infinity_polling()
 
 @bot.message_handler(commands=['my'])
 def my_listings(message):
