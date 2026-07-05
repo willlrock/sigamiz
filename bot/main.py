@@ -61,12 +61,19 @@ def start_add_flow(message):
     bot.set_state(message.from_user.id, AddListingStates.location, message.chat.id)
     bot.reply_to(message, "Please send your location.")
 
+import traceback
 @bot.message_handler(state=AddListingStates.location, content_types=['location'])
 def handle_location(message):
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-        data['lat'], data['lng'] = blur_location(message.location.latitude, message.location.longitude)
-    bot.send_message(message.chat.id, "Price per person (UZS):")
-    bot.set_state(message.from_user.id, AddListingStates.price, message.chat.id)
+    try:
+        print(f"DEBUG: Received location from {message.from_user.id}")
+        with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+            data['lat'], data['lng'] = blur_location(message.location.latitude, message.location.longitude)
+        print("DEBUG: Location stored. Prompting for price.")
+        bot.send_message(message.chat.id, "Price per person (UZS):")
+        bot.set_state(message.from_user.id, AddListingStates.price, message.chat.id)
+    except Exception as e:
+        print(f"ERROR in handle_location: {traceback.format_exc()}")
+        bot.reply_to(message, "An error occurred. Please try again later.")
 
 @bot.message_handler(state=AddListingStates.price, is_digit=True)
 def handle_price(message):
@@ -154,22 +161,29 @@ bot.infinity_polling()
 
 @bot.message_handler(commands=['my'])
 def my_listings(message):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    listings = cursor.execute("SELECT * FROM listings WHERE telegram_user_id = ? AND status != 'expired'", (message.from_user.id,)).fetchall()
-    conn.close()
+    try:
+        print(f"DEBUG: Fetching listings for {message.from_user.id}")
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM listings WHERE telegram_user_id = ? AND status != 'expired'", (message.from_user.id,))
+        listings = cursor.fetchall()
+        conn.close()
+        print(f"DEBUG: Found {len(listings)} listings.")
+        
+        if not listings:
+            bot.reply_to(message, "You don't have any active listings.")
+            return
 
-    if not listings:
-        bot.reply_to(message, "You don't have any active listings.")
-        return
-
-    for listing in listings:
-        text = f"Listing ID: {listing['id']}\nPrice: {listing['price_per_person']}\nStatus: {listing['status']}"
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("Delete", callback_data=f"del_{listing['id']}"))
-        markup.add(types.InlineKeyboardButton("Extend 7 days", callback_data=f"ext_{listing['id']}"))
-        bot.send_message(message.chat.id, text, reply_markup=markup)
+        for listing in listings:
+            text = f"Listing ID: {listing['id']}\nPrice: {listing['price_per_person']}\nStatus: {listing['status']}"
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("Delete", callback_data=f"del_{listing['id']}"))
+            markup.add(types.InlineKeyboardButton("Extend 7 days", callback_data=f"ext_{listing['id']}"))
+            bot.send_message(message.chat.id, text, reply_markup=markup)
+    except Exception as e:
+        print(f"ERROR in my_listings: {traceback.format_exc()}")
+        bot.reply_to(message, "An error occurred fetching your listings.")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(('del_', 'ext_')))
 def handle_manage_listing(call):
