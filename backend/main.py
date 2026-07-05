@@ -3,10 +3,24 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import sqlite3
 import os
+import requests
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 
 app = FastAPI()
+
+def send_admin_notification(text):
+    if BOT_TOKEN and ADMIN_CHAT_ID:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        try:
+            requests.post(url, data={"chat_id": ADMIN_CHAT_ID, "text": text})
+        except Exception as e:
+            print(f"Failed to send admin notification: {e}")
 
 # Базовый путь
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -121,6 +135,7 @@ async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
     if count >= 3:
         cursor.execute("UPDATE listings SET status = 'hidden_pending_review' WHERE id = ?", (listing_id,))
         print(f"Listing {listing_id} hidden due to reports.")
+        send_admin_notification(f"Объявление {listing_id} скрыто из-за 3 жалоб.\nПричина последней: {reason}")
     
     conn.commit()
     conn.close()
