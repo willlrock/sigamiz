@@ -108,11 +108,11 @@ def get_listing_detail(listing_id: int):
     }
 
 @app.post("/api/report")
-async def report_listing(listing_id: int, reason: str):
+async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
     conn = get_db()
     cursor = conn.cursor()
     # 1. Вставляем жалобу
-    cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
+    cursor.execute("INSERT INTO reports (listing_id, reason, reporter_telegram_id) VALUES (?, ?, ?)", (listing_id, reason, reporter_id if reporter_id != 0 else None))
     # 2. Увеличиваем счетчик
     cursor.execute("UPDATE listings SET report_count = report_count + 1 WHERE id = ?", (listing_id,))
     # 3. Проверяем лимит
