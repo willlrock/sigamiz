@@ -52,15 +52,15 @@ def is_banned(user_id):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Welcome! Use /add to create a listing or /my to view your listings.")
+    bot.reply_to(message, "Salom! Klapa.net botiga xush kelibsiz.\n\nE'lon qo'shish uchun /add yoki e'lonlaringizni ko'rish uchun /my buyrug'ini tanlang.\n\nQoidalar:\n- Faqat xonadosh qidirish (butun kvartira emas);\n- Maklerlar taqiqlanadi;\n- E'lon 7 kundan keyin avtomatik o'chiriladi.")
 
 @bot.message_handler(commands=['add'])
 def start_add_flow(message):
     if is_banned(message.from_user.id):
-        bot.reply_to(message, "You are banned from adding listings.")
+        bot.reply_to(message, "Sizga e'lon qo'shish taqiqlangan.")
         return
     bot.set_state(message.from_user.id, AddListingStates.location, message.chat.id)
-    bot.reply_to(message, "Please send your location.")
+    bot.reply_to(message, "Iltimos, lokatsiyangizni yuboring.")
 
 import traceback
 @bot.message_handler(state=AddListingStates.location, content_types=['location'])
@@ -90,17 +90,25 @@ def handle_university(call):
     bot.send_message(call.message.chat.id, "Price per person (UZS):")
     bot.set_state(call.from_user.id, AddListingStates.price, call.message.chat.id)
 
+# 3.4. Update Roommates section to inline buttons
 @bot.message_handler(state=AddListingStates.price, is_digit=True)
 def handle_price(message):
     with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
         data['price'] = int(message.text)
-    bot.send_message(message.chat.id, "Roommates needed? (1, 2, or 3+)")
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    markup.add(
+        types.InlineKeyboardButton("1", callback_data="room_1"),
+        types.InlineKeyboardButton("2", callback_data="room_2"),
+        types.InlineKeyboardButton("3+", callback_data="room_3")
+    )
+    bot.send_message(message.chat.id, "Nechta xonadosh kerak?", reply_markup=markup)
     bot.set_state(message.from_user.id, AddListingStates.roommates_needed, message.chat.id)
 
-@bot.message_handler(state=AddListingStates.roommates_needed)
-def handle_roommates(message):
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-        data['needed'] = message.text
+@bot.callback_query_handler(state=AddListingStates.roommates_needed, func=lambda call: call.data.startswith("room_"))
+def handle_roommates(call):
+    needed = call.data.split("_")[1]
+    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        data['needed'] = needed
         data['amenities'] = []
     
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -108,8 +116,8 @@ def handle_roommates(message):
     for opt in options:
         markup.add(types.InlineKeyboardButton(opt, callback_data=opt))
     markup.add(types.InlineKeyboardButton("Done", callback_data="done"))
-    bot.send_message(message.chat.id, "Select amenities:", reply_markup=markup)
-    bot.set_state(message.from_user.id, AddListingStates.amenities, message.chat.id)
+    bot.edit_message_text("Qulayliklarni tanlang:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+    bot.set_state(call.from_user.id, AddListingStates.amenities, call.message.chat.id)
 
 @bot.callback_query_handler(state=AddListingStates.amenities, func=lambda call: True)
 def handle_amenities(call):
