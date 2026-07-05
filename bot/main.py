@@ -4,10 +4,13 @@ import sqlite3
 import telebot
 import requests
 import io
+import traceback
+import math
 from PIL import Image
-from telebot import custom_filters, types
+from telebot import types
 from telebot.handler_backends import State, StatesGroup
-from telebot.storage import StateSqlite3Storage
+from telebot.custom_filters import StateFilter, IsDigitFilter
+from telebot.storage import StatePickleStorage
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,8 +19,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
-storage = StateSqlite3Storage(db_path=os.path.join(BASE_DIR, "backend", "state.db"))
+STATE_FILE = os.path.join(BASE_DIR, "backend", "states.pkl")
+storage = StatePickleStorage(file_path=STATE_FILE)
 bot = telebot.TeleBot(TOKEN, state_storage=storage)
+
+bot.add_custom_filter(StateFilter(bot))
+bot.add_custom_filter(IsDigitFilter())
 
 class AddListingStates(StatesGroup):
     location = State()
