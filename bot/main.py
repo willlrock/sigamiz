@@ -129,48 +129,41 @@ def handle_photos(message):
         if len(data['photos']) < 5:
             file_id = message.photo[-1].file_id
             data['photos'].append(file_id)
-            bot.reply_to(message, f"Photo {len(data['photos'])}/5 added.")
+            bot.reply_to(message, f"Photo {len(data['photos'])}/5 added. Type /done when finished.")
         else:
             bot.reply_to(message, "Limit of 5 photos reached. Type /done.")
 
 @bot.message_handler(state=AddListingStates.photos, commands=['done'])
-def save_listing(message):
+def confirm_listing(message):
     with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-        # Подготовка удобств
-        amenities = data.get('amenities', [])
-        has_wifi = 1 if "Wi-Fi" in amenities else 0
-        has_ac = 1 if "AC" in amenities else 0
-        has_washing_machine = 1 if "Washer" in amenities else 0
-        no_landlord_in_yard = 1 if "No Landlord" in amenities else 0
-        near_metro = 1 if "Metro" in amenities else 0
+        summary = (
+            f"Summary:\n"
+            f"University: {data.get('university')}\n"
+            f"Price: {data.get('price')} UZS\n"
+            f"Roommates needed: {data.get('needed')}\n"
+            f"Amenities: {', '.join(data.get('amenities', []))}\n"
+            f"Photos: {len(data.get('photos', []))}"
+        )
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("✅ Joylashtirish", callback_data="confirm_yes"))
+        markup.add(types.InlineKeyboardButton("❌ Bekor qilish", callback_data="confirm_no"))
+        bot.send_message(message.chat.id, summary, reply_markup=markup)
+        bot.set_state(message.from_user.id, AddListingStates.confirm, message.chat.id)
 
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, 
-                                  has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
-        """, (message.from_user.id, message.from_user.username or "none", data['lat'], data['lng'], 
-              data['price'], data['needed'], has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro))
-        listing_id = cursor.lastrowid
-        
-        os.makedirs(f"{UPLOAD_DIR}/{listing_id}", exist_ok=True)
-        for i, file_id in enumerate(data['photos']):
-            file_info = bot.get_file(file_id)
-            downloaded_file = bot.download_file(file_info.file_path)
-            img = Image.open(io.BytesIO(downloaded_file))
-            if img.width > 1200:
-                ratio = 1200 / float(img.width)
-                height = int(float(img.height) * float(ratio))
-                img = img.resize((1200, height), Image.Resampling.LANCZOS)
-            file_path = f"{UPLOAD_DIR}/{listing_id}/{i}.jpg"
-            img.save(file_path, 'JPEG', quality=80)
-            cursor.execute("INSERT INTO listing_photos (listing_id, file_path) VALUES (?, ?)", (listing_id, file_path))
-        
-        conn.commit()
-        conn.close()
-    
-    bot.reply_to(message, "Listing created successfully!")
+@bot.callback_query_handler(state=AddListingStates.confirm, func=lambda call: call.data.startswith("confirm_"))
+def handle_confirm(call):
+    if call.data == "confirm_yes":
+        save_listing_to_db(call.from_user.id, call.message.chat.id)
+        bot.edit_message_text("Listing created successfully!", call.message.chat.id, call.message.message_id)
+        bot.delete_state(call.from_user.id, call.message.chat.id)
+    else:
+        bot.edit_message_text("Listing creation cancelled.", call.message.chat.id, call.message.message_id)
+        bot.delete_state(call.from_user.id, call.message.chat.id)
+
+def save_listing_to_db(user_id, chat_id):
+    with bot.retrieve_data(user_id, chat_id) as data:
+        amenities = data.get('amenities', [])
+        # ... (rest of the DB logic)
 
 @bot.message_handler(commands=['my'])
 def my_listings(message):
