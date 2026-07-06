@@ -47,6 +47,8 @@ def migrate_db(cursor):
         "description": "TEXT",
         "phone_number": "TEXT",
         "room_count": "INTEGER",
+        "author_gender": "TEXT",
+        "preferred_gender": "TEXT",
         "has_washing_machine": "BOOLEAN DEFAULT 0",
         "no_landlord_in_yard": "BOOLEAN DEFAULT 0",
         "near_metro": "BOOLEAN DEFAULT 0",
@@ -85,13 +87,14 @@ def init_db():
             cursor.execute("""
                 INSERT INTO listings (
                     telegram_user_id, telegram_username, listing_type, university, district, housing_type, description,
+                    author_gender, preferred_gender,
                     lat, lng, price_per_person, people_needed, has_wifi, has_ac, has_washing_machine,
                     no_landlord_in_yard, near_metro, status, expires_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 0, "demo_user", "offer", "TATU", "Yunusobod", "Kvartira",
-                "Demo e'lon: 2 ta talaba uchun joy bor.", 41.2995, 69.2401,
+                "Demo e'lon: 2 ta talaba uchun joy bor.", "male", "any", 41.2995, 69.2401,
                 1500000, 1, 1, 1, 1, 1, 1, "active", expires_at
             ))
     conn.commit()
@@ -162,7 +165,12 @@ def get_listing_photos(cursor, listing_ids):
     return photos_by_listing
 
 @app.get("/api/listings")
-def get_listings(listing_type: str | None = None, district: str | None = None, university: str | None = None):
+def get_listings(
+    listing_type: str | None = None,
+    district: str | None = None,
+    university: str | None = None,
+    preferred_gender: str | None = None,
+):
     conn = get_db()
     cursor = conn.cursor()
     
@@ -177,6 +185,9 @@ def get_listings(listing_type: str | None = None, district: str | None = None, u
     if university:
         query += " AND university = ?"
         params.append(university)
+    if preferred_gender and preferred_gender != "any":
+        query += " AND (author_gender = ? OR preferred_gender = ? OR preferred_gender = 'any')"
+        params.extend([preferred_gender, preferred_gender])
         
     listings = cursor.execute(query, params).fetchall()
     photos_by_listing = get_listing_photos(cursor, [row["id"] for row in listings])
@@ -193,6 +204,8 @@ def get_listings(listing_type: str | None = None, district: str | None = None, u
             "room_count": row["room_count"],
             "description": row["description"],
             "phone_number": row["phone_number"],
+            "author_gender": row["author_gender"],
+            "preferred_gender": row["preferred_gender"],
             "lat": row["lat"],
             "lng": row["lng"],
             "price": row["price_per_person"],
@@ -228,6 +241,8 @@ def get_listing_detail(listing_id: int):
         "housing_type": listing["housing_type"],
         "room_count": listing["room_count"],
         "description": listing["description"],
+        "author_gender": listing["author_gender"],
+        "preferred_gender": listing["preferred_gender"],
         "price": listing["price_per_person"],
         "people_needed": listing["people_needed"],
         "photos": photos,

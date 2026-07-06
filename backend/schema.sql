@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS listings (
  description TEXT,
  phone_number TEXT,
  room_count INTEGER,
+ author_gender TEXT CHECK(author_gender IN ('male','female')),
+ preferred_gender TEXT CHECK(preferred_gender IN ('male','female','any')),
  lat REAL NOT NULL,
  lng REAL NOT NULL,
  price_per_person INTEGER NOT NULL,
