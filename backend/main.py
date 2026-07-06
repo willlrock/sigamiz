@@ -84,20 +84,20 @@ def get_listings():
     
     results = []
     for row in listings:
-    results.append({
-        "id": row["id"],
-        "university": row["university"],
-        "lat": row["lat"],
-        "lng": row["lng"],
-        "price": row["price_per_person"],
-        "people_needed": row["people_needed"],
-        "has_wifi": row["has_wifi"],
-        "has_ac": row["has_ac"],
-        "has_washing_machine": row["has_washing_machine"],
-        "no_landlord_in_yard": row["no_landlord_in_yard"],
-        "near_metro": row["near_metro"],
-        "status": row["status"]
-    })
+        results.append({
+            "id": row["id"],
+            "university": row["university"],
+            "lat": row["lat"],
+            "lng": row["lng"],
+            "price": row["price_per_person"],
+            "people_needed": row["people_needed"],
+            "has_wifi": row["has_wifi"],
+            "has_ac": row["has_ac"],
+            "has_washing_machine": row["has_washing_machine"],
+            "no_landlord_in_yard": row["no_landlord_in_yard"],
+            "near_metro": row["near_metro"],
+            "status": row["status"]
+        })
     conn.close()
     return results
 
