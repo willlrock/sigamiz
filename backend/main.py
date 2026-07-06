@@ -75,18 +75,77 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_photo_path_column(cursor):
+    columns = {row[1] for row in cursor.execute("PRAGMA table_info(listing_photos)").fetchall()}
+    if "file_path" in columns:
+        return "file_path"
+    if "photo_path" in columns:
+        return "photo_path"
+    return None
+
+def normalize_photo_path(path):
+    if not path:
+        return None
+    normalized = str(path).replace("\\", "/")
+    base = BASE_DIR.replace("\\", "/")
+    if normalized.startswith(base):
+        normalized = normalized[len(base):]
+    if not normalized.startswith("/"):
+        normalized = "/" + normalized.lstrip("/")
+    return normalized
+
+def get_listing_photos(cursor, listing_ids):
+    if not listing_ids:
+        return {}
+    photo_column = get_photo_path_column(cursor)
+    if not photo_column:
+        return {listing_id: [] for listing_id in listing_ids}
+
+    placeholders = ",".join("?" for _ in listing_ids)
+    rows = cursor.execute(
+        f"SELECT listing_id, {photo_column} AS path FROM listing_photos WHERE listing_id IN ({placeholders})",
+        listing_ids,
+    ).fetchall()
+
+    photos_by_listing = {listing_id: [] for listing_id in listing_ids}
+    for row in rows:
+        photo = normalize_photo_path(row["path"])
+        if photo:
+            photos_by_listing.setdefault(row["listing_id"], []).append(photo)
+    return photos_by_listing
+
 @app.get("/api/listings")
-def get_listings():
+def get_listings(listing_type: str | None = None, district: str | None = None, university: str | None = None):
     conn = get_db()
     cursor = conn.cursor()
-    # Добавляем необходимые поля: university, has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro
-    listings = cursor.execute("SELECT * FROM listings WHERE status = 'active'").fetchall()
+    
+    query = "SELECT * FROM listings WHERE status = 'active'"
+    params = []
+    if listing_type:
+        query += " AND listing_type = ?"
+        params.append(listing_type)
+    if district:
+        query += " AND district = ?"
+        params.append(district)
+    if university:
+        query += " AND university = ?"
+        params.append(university)
+        
+    listings = cursor.execute(query, params).fetchall()
+    photos_by_listing = get_listing_photos(cursor, [row["id"] for row in listings])
     
     results = []
     for row in listings:
         results.append({
             "id": row["id"],
+            "listing_type": row["listing_type"],
+            "telegram_username": row["telegram_username"],
             "university": row["university"],
+            "district": row["district"],
+            "housing_type": row["housing_type"],
+            "room_count": row["room_count"],
+            "description": row["description"],
+            "phone_number": row["phone_number"],
             "lat": row["lat"],
             "lng": row["lng"],
             "price": row["price_per_person"],
@@ -96,41 +155,61 @@ def get_listings():
             "has_washing_machine": row["has_washing_machine"],
             "no_landlord_in_yard": row["no_landlord_in_yard"],
             "near_metro": row["near_metro"],
-            "status": row["status"]
+            "status": row["status"],
+            "photos": photos_by_listing.get(row["id"], [])
         })
     conn.close()
     return results
 
 @app.get("/api/listings/{listing_id}")
 def get_listing_detail(listing_id: int):
-    # TODO: Add rate-limiting here (e.g., using slowapi) to prevent contact scraping
     conn = get_db()
     cursor = conn.cursor()
     listing = cursor.execute("SELECT * FROM listings WHERE id = ?", (listing_id,)).fetchone()
     if not listing:
+        conn.close()
         return {"error": "Not found"}
     
-    # Предполагаем, что таблица listing_photos существует
-    photos = []
-    try:
-        photos = cursor.execute("SELECT file_path FROM listing_photos WHERE listing_id = ?", (listing_id,)).fetchall()
-    except sqlite3.OperationalError:
-        pass # Таблица может отсутствовать
+    photos = get_listing_photos(cursor, [listing_id]).get(listing_id, [])
     conn.close()
     
-    return {
+    data = {
         "id": listing["id"],
+        "listing_type": listing["listing_type"],
+        "university": listing["university"],
+        "district": listing["district"],
+        "housing_type": listing["housing_type"],
+        "room_count": listing["room_count"],
+        "description": listing["description"],
         "price": listing["price_per_person"],
-        "photos": [p["file_path"].replace(BASE_DIR, "").replace("\\", "/") for p in photos],
+        "people_needed": listing["people_needed"],
+        "photos": photos,
         "telegram_username": listing["telegram_username"]
     }
+    if listing["phone_number"]:
+        data["phone_number"] = listing["phone_number"]
+        
+    return data
 
 @app.post("/api/report")
 async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
     conn = get_db()
     cursor = conn.cursor()
     # 1. Вставляем жалобу
-    cursor.execute("INSERT INTO reports (listing_id, reason, reporter_telegram_id) VALUES (?, ?, ?)", (listing_id, reason, reporter_id if reporter_id != 0 else None))
+    report_columns = {row[1] for row in cursor.execute("PRAGMA table_info(reports)").fetchall()}
+    reporter_column = None
+    if "reporter_telegram_id" in report_columns:
+        reporter_column = "reporter_telegram_id"
+    elif "reporter_telegram_user_id" in report_columns:
+        reporter_column = "reporter_telegram_user_id"
+
+    if reporter_column:
+        cursor.execute(
+            f"INSERT INTO reports (listing_id, reason, {reporter_column}) VALUES (?, ?, ?)",
+            (listing_id, reason, reporter_id if reporter_id != 0 else 0),
+        )
+    else:
+        cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
     # 2. Увеличиваем счетчик
     cursor.execute("UPDATE listings SET report_count = report_count + 1 WHERE id = ?", (listing_id,))
     # 3. Проверяем лимит
@@ -143,10 +222,17 @@ async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
         owner_row = cursor.fetchone()
         if owner_row:
             owner_id = owner_row[0]
-            cursor.execute(
-                "INSERT OR IGNORE INTO banned_users (telegram_user_id, reason) VALUES (?, ?)",
-                (owner_id, f"3+ jalo, oxirgisi: {reason}")
-            )
+            banned_columns = {row[1] for row in cursor.execute("PRAGMA table_info(banned_users)").fetchall()}
+            if "reason" in banned_columns:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO banned_users (telegram_user_id, reason) VALUES (?, ?)",
+                    (owner_id, f"3+ jalo, oxirgisi: {reason}")
+                )
+            else:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO banned_users (telegram_user_id) VALUES (?)",
+                    (owner_id,)
+                )
         print(f"Listing {listing_id} hidden. Author {owner_row[0] if owner_row else '?'} banned.")
         send_admin_notification(f"Объявление {listing_id} скрыто, автор {owner_row[0] if owner_row else '?'} забанен.\nПричина: {reason}")
     
@@ -168,6 +254,10 @@ async def get_home():
 @app.get("/xarita")
 async def get_map():
     return FileResponse(os.path.join(FRONTEND_DIR, "map.html"))
+
+@app.get("/about")
+async def get_about():
+    return FileResponse(os.path.join(FRONTEND_DIR, "about.html"))
 
 # Монтируем статику с префиксом /static, чтобы не перекрывать корни
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

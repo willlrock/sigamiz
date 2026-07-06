@@ -1,483 +1,338 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>klapa.net — Talabalar uchun sherik xaritasi</title>
+<title>Sigamiz - Talabalar uchun turar joy xaritasi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
- :root{
- --primary:#00A35C;
- --primary-dark:#00864B;
- --secondary:#476353;
- --surface:#FBFDF8;
- --surface-container:#F2F4EF;
- --surface-container-high:#E7E9E4;
- --on-surface:#191C1A;
- --on-surface-variant:#3D4A3F;
- --outline:#E1E3E1;
- --chip-bg:#D7E8DE;
- --chip-bg-active:#00A35C;
- --error:#BA1A1A;
- --radius-lg:1rem;
- --radius-pill:9999px;
- --shadow-1:0 2px 8px rgba(25,28,26,0.06);
- --shadow-2:0 6px 20px rgba(25,28,26,0.12);
- --shadow-3:0 12px 32px rgba(25,28,26,0.18);
- }
- *{box-sizing:border-box;}
- html,body{margin:0;padding:0;height:100%;font-family:'Plus Jakarta Sans',sans-serif;color:var(--on-surface);background:var(--surface);}
- #map{position:fixed;inset:0;z-index:0;}
- .leaflet-container{background:#eef1ec;font-family:'Plus Jakarta Sans',sans-serif;}
-
- /* ---------- Top bar ---------- */
- .topbar{
- position:fixed;top:16px;left:16px;right:16px;z-index:1000;
- display:flex;align-items:center;gap:12px;
- background:rgba(251,253,248,0.92);
- backdrop-filter:blur(10px);
- padding:10px 14px;border-radius:var(--radius-pill);
- box-shadow:var(--shadow-2);
- }
- .brand{
- display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;color:var(--primary-dark);
- white-space:nowrap;flex-shrink:0;
- }
- .brand svg{flex-shrink:0;}
- .search{
- flex:1;min-width:0;display:flex;align-items:center;gap:8px;
- background:var(--surface-container);border-radius:var(--radius-pill);
- padding:8px 16px;color:var(--on-surface-variant);font-size:14px;
- }
- .search input{border:none;background:none;outline:none;font-family:inherit;font-size:14px;width:100%;color:var(--on-surface);}
- .search input::placeholder{color:var(--on-surface-variant);}
- .stat{font-size:13px;color:var(--on-surface-variant);white-space:nowrap;flex-shrink:0;}
- .stat b{color:var(--on-surface);}
- .btn-add{
- flex-shrink:0;
- background:var(--primary);color:#fff;border:none;font-family:inherit;
- font-weight:600;font-size:14px;padding:10px 18px;border-radius:var(--radius-pill);
- cursor:pointer;transition:background .15s ease, transform .1s ease;
- display:flex;align-items:center;gap:6px;text-decoration:none;
- }
- .btn-add:hover{background:var(--primary-dark);}
- .btn-add:active{transform:scale(0.97);}
-
- /* ---------- Filters button + fly-out panel ---------- */
- .filters-wrap{
- position:fixed;top:74px;left:16px;z-index:1000;
- display:flex;align-items:flex-start;gap:8px;
- }
- .filters-btn{
- background:rgba(251,253,248,0.95);
- backdrop-filter:blur(6px);
- border:1px solid var(--outline);
- color:var(--on-surface-variant);
- font-family:inherit;font-size:13px;font-weight:600;
- padding:8px 14px;border-radius:var(--radius-pill);
- cursor:pointer;display:flex;align-items:center;gap:6px;
- box-shadow:var(--shadow-1);
- transition:border-color .15s ease;
- user-select:none;
- flex-shrink:0;
- }
- .filters-btn:hover{border-color:var(--primary);}
-
- .filters-panel{
- display:flex;gap:8px;flex-wrap:wrap;
- max-width:0;overflow:hidden;opacity:0;
- transition:max-width .25s ease, opacity .2s ease;
- }
- .filters-panel.open{max-width:900px;opacity:1;}
- .filters-panel .chip{
- background:rgba(251,253,248,0.95);
- backdrop-filter:blur(6px);
- border:1px solid var(--outline);
- color:var(--on-surface-variant);
- font-family:inherit;font-size:13px;font-weight:600;
- padding:8px 14px;border-radius:var(--radius-pill);
- cursor:pointer;display:flex;align-items:center;gap:6px;
- box-shadow:var(--shadow-1);
- transition:all .15s ease, transform .2s ease;
- user-select:none;
- white-space:nowrap;
- flex-shrink:0;
- transform:scale(0.85);
- opacity:0;
- }
- .filters-panel.open .chip{transform:scale(1);opacity:1;}
- .filters-panel.open .chip:nth-child(1){transition-delay:.02s;}
- .filters-panel.open .chip:nth-child(2){transition-delay:.06s;}
- .filters-panel.open .chip:nth-child(3){transition-delay:.10s;}
- .filters-panel.open .chip:nth-child(4){transition-delay:.14s;}
- .filters-panel.open .chip:nth-child(5){transition-delay:.18s;}
- .filters-panel .chip:hover{border-color:var(--primary);}
- .filters-panel .chip.active{background:var(--chip-bg-active);color:#fff;border-color:var(--chip-bg-active);}
-
- /* ---------- Sidebar ---------- */
- .sidebar-toggle{
- background:none;border:none;cursor:pointer;padding:0;
- display:flex;flex-direction:column;justify-content:center;align-items:center;
- width:28px;height:28px;flex-shrink:0;gap:5px;
- }
- .sidebar-toggle .bar{
- width:20px;height:2px;background:var(--primary-dark);border-radius:2px;
- transition:transform .25s ease, opacity .2s ease;
- }
- .sidebar-toggle.open .bar1{transform:translateY(7px) rotate(45deg);}
- .sidebar-toggle.open .bar2{opacity:0;}
- .sidebar-toggle.open .bar3{transform:translateY(-7px) rotate(-45deg);}
- .sidebar-overlay{
- position:fixed;inset:0;background:rgba(25,28,26,0.4);z-index:2500;
- display:none;
- }
- .sidebar-overlay.open{display:block;}
- .sidebar{
- position:fixed;top:0;left:0;bottom:0;width:280px;
- background:var(--surface);z-index:2600;
- box-shadow:var(--shadow-3);
- transform:translateX(-100%);transition:transform .2s ease;
- display:flex;flex-direction:column;padding:20px;
- }
- .sidebar.open{transform:translateX(0);}
- .sidebar-brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
- .sidebar-brand .brand{font-size:18px;}
- .sidebar-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--on-surface-variant);}
- .sidebar-nav{display:flex;flex-direction:column;gap:2px;}
- .sidebar-nav a{
- display:block;padding:12px 14px;border-radius:0.75rem;
- color:var(--on-surface);text-decoration:none;font-weight:600;font-size:15px;
- transition:background .15s ease;
- }
- .sidebar-nav a:hover{background:var(--surface-container);}
- .sidebar-nav a.current{background:var(--chip-bg);color:var(--primary-dark);}
- .sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--outline);}
-
- /* ---------- Legend ---------- */
- .legend{
- position:fixed;bottom:20px;left:16px;z-index:1000;
- background:rgba(251,253,248,0.95);backdrop-filter:blur(6px);
- padding:10px 14px;border-radius:var(--radius-lg);
- font-size:12px;color:var(--on-surface-variant);box-shadow:var(--shadow-1);
- display:flex;flex-direction:column;gap:4px;
- }
- .legend-item{display:flex;align-items:center;gap:6px;}
- .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-
- /* ---------- Price marker ---------- */
- .price-pin{
- background:var(--primary);color:#fff;font-weight:700;font-size:13px;
- padding:6px 12px;border-radius:var(--radius-pill);
- box-shadow:var(--shadow-2);white-space:nowrap;
- border:2px solid #fff;
- font-family:'Plus Jakarta Sans',sans-serif;
- }
- .price-pin.reviewing{background:var(--surface-container-high);color:var(--on-surface-variant);}
-
- /* ---------- Modal ---------- */
- .overlay{
- position:fixed;inset:0;background:rgba(25,28,26,0.45);z-index:2000;
- display:none;align-items:center;justify-content:center;padding:16px;
- }
- .overlay.open{display:flex;}
- .modal{
- background:var(--surface);border-radius:1.25rem;max-width:420px;width:100%;
- max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-3);
- animation:pop .18s ease;
- }
- @keyframes pop{from{transform:scale(0.96);opacity:0;}to{transform:scale(1);opacity:1;}}
- .modal-header{position:relative;}
- .carousel{position:relative;height:220px;background:var(--surface-container-high);border-radius:1.25rem 1.25rem 0 0;overflow:hidden;}
- .carousel img{width:100%;height:100%;object-fit:cover;display:none;}
- .carousel img.active{display:block;}
- .carousel-nav{
- position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
- display:flex;gap:5px;
- }
- .carousel-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.55);}
- .carousel-dot.active{background:#fff;}
- .modal-close{
- position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;
- background:rgba(25,28,26,0.5);color:#fff;border:none;font-size:16px;cursor:pointer;
- display:flex;align-items:center;justify-content:center;
- }
- .modal-body{padding:18px 20px 22px;}
- .modal-price{font-size:22px;font-weight:700;color:var(--on-surface);}
- .modal-sub{font-size:13px;color:var(--on-surface-variant);margin-top:2px;}
- .modal-chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0;}
- .modal-chips .tag{
- background:var(--chip-bg);color:var(--primary-dark);font-size:12px;font-weight:600;
- padding:6px 12px;border-radius:var(--radius-pill);
- }
- .modal-actions{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
- .btn-primary{
- background:var(--primary);color:#fff;border:none;font-family:inherit;font-weight:700;
- font-size:15px;padding:14px;border-radius:var(--radius-pill);cursor:pointer;
- text-decoration:none;text-align:center;display:block;
- }
- .btn-primary:hover{background:var(--primary-dark);}
- .btn-report{
- background:none;border:none;color:var(--error);font-family:inherit;font-size:13px;
- font-weight:600;cursor:pointer;text-align:center;padding:4px;
- }
-
- /* ---------- Empty state ---------- */
- .empty-toast{
- position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1000;
- background:var(--on-surface);color:#fff;font-size:13px;padding:10px 18px;
- border-radius:var(--radius-pill);box-shadow:var(--shadow-2);display:none;
- }
-
- @media (max-width:600px){
- .topbar{flex-wrap:wrap;border-radius:1.25rem;}
- .brand{order:1;}
- .btn-add{order:2;margin-left:auto;}
- .search{order:3;width:100%;}
- .stat{display:none;}
- .filters-wrap{top:120px;}
- .modal{max-width:100%;}
- }
+:root{
+ --surface:#FBFDF8; --surface-low:#F3F4F0; --surface-container:#F2F4EF;
+ --surface-high:#E7E9E5; --white:#fff; --primary:#006A3A; --primary-bright:#00A35C;
+ --primary-container:#00864B; --secondary:#486454; --tertiary:#D6E7DD;
+ --text:#191C1A; --muted:#3D4A3F; --outline:#E1E3E1; --outline-strong:#BCCABC;
+ --seek:#2563EB; --seek-soft:#DCE8FF; --danger:#BA1A1A; --telegram:#2AABEE;
+ --shadow-1:0 4px 6px -1px rgba(25,28,26,.06);
+ --shadow-2:0 10px 15px -3px rgba(25,28,26,.12);
+ --shadow-3:0 24px 50px -18px rgba(25,28,26,.28);
+ --radius-lg:24px; --radius-xl:32px; --pill:999px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:"Plus Jakarta Sans",sans-serif;background:var(--surface);color:var(--text)}
+button,input{font:inherit}
+a{color:inherit;text-decoration:none}
+.material-symbols-outlined{font-variation-settings:"FILL" 0,"wght" 500,"GRAD" 0,"opsz" 24}
+.topbar{position:fixed;top:0;left:0;right:0;height:80px;z-index:1000;background:rgba(251,253,248,.82);backdrop-filter:blur(14px);box-shadow:var(--shadow-1);border-bottom:1px solid rgba(225,227,225,.7)}
+.topbar-inner{height:100%;max-width:1200px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{font-size:26px;font-weight:800;color:var(--primary);letter-spacing:0}
+.nav{display:flex;align-items:center;gap:28px}
+.nav a{font-size:15px;font-weight:600;color:var(--muted);padding:28px 0 8px;border-bottom:2px solid transparent}
+.nav a.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:800}
+.actions{display:flex;align-items:center;gap:14px}
+.add-btn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:0;border-radius:var(--pill);padding:12px 24px;font-weight:800;box-shadow:var(--shadow-1)}
+.add-btn:hover{background:var(--primary-container)}
+.icon-btn{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:var(--primary);display:grid;place-items:center;cursor:pointer}
+.icon-btn:hover{background:var(--surface-high)}
+.layout{height:100vh;padding-top:80px;display:grid;grid-template-columns:minmax(0,1fr) 480px;overflow:hidden}
+.map-wrap{position:relative;min-width:0;background:var(--surface-low)}
+#map{position:absolute;inset:0;z-index:0}
+.map-fallback{position:absolute;inset:0;background:center/cover url("https://lh3.googleusercontent.com/aida-public/AB6AXuBxnbz-z52KTOBqvw_Q59kJ8Od7qXY_UMF3PYDlnOW2alQ0gTNWV4uRoEXitzVWjIW6tPdqT2oghccjzs_C2N4guIiFcQPD5LoTslivdN0aH6opnIu9_VQvn-nfSGxuB7JWB9bLTDmjLhfsgbxWP2vOT7n8gLfzyZj2ISGWNrKbsAVK4M78XGQFULhG7EEf07KIeTvEtQEtF9g08RwYH-o5BpFqavAo4TRPx54_eFMNMKfH_h4AsgfGsgVhHFOKiV2ZN75-bT7ZhHg");filter:saturate(.92);z-index:-1}
+.map-tools{position:absolute;top:24px;left:24px;right:24px;max-width:540px;z-index:500;display:flex;flex-direction:column;gap:12px}
+.search-box{display:flex;align-items:center;gap:12px;background:rgba(251,253,248,.95);backdrop-filter:blur(12px);border:1px solid rgba(225,227,225,.75);border-radius:var(--pill);padding:12px 16px;box-shadow:var(--shadow-2)}
+.search-box .material-symbols-outlined{color:var(--primary)}
+.search-box input{border:0;outline:0;background:transparent;width:100%;font-size:16px;color:var(--text)}
+.chip-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chip-row::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;border:1px solid var(--outline);background:rgba(251,253,248,.9);color:var(--muted);border-radius:var(--pill);padding:10px 15px;font-size:13px;font-weight:800;box-shadow:var(--shadow-1);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip:hover{border-color:var(--primary)}
+.chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.chip[data-type="seek"].active{background:var(--seek);border-color:var(--seek)}
+.pin{display:flex;align-items:center;gap:6px;border:2px solid #fff;border-radius:var(--pill);padding:7px 12px;color:#fff;font-size:13px;font-weight:800;box-shadow:var(--shadow-2);position:relative}
+.pin:after{content:"";position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid currentColor;filter:drop-shadow(0 2px 1px rgba(0,0,0,.12))}
+.pin.offer{background:var(--primary);color:var(--primary)}
+.pin.seek{background:var(--seek);color:var(--seek)}
+.pin span{color:#fff;position:relative;z-index:1}
+.pin.reviewing{background:var(--surface);color:var(--outline-strong)}
+.pin.reviewing span{color:var(--muted)}
+.fab{position:absolute;right:32px;bottom:32px;z-index:510;display:inline-flex;align-items:center;gap:12px;background:var(--telegram);color:#fff;border:0;border-radius:var(--pill);padding:16px 28px;font-size:15px;font-weight:800;box-shadow:0 18px 38px -16px rgba(42,171,238,.8)}
+.fab:hover{background:#229ED9;transform:translateY(-1px)}
+.results{position:relative;background:rgba(251,253,248,.96);backdrop-filter:blur(16px);border-left:1px solid rgba(225,227,225,.8);box-shadow:-10px 0 28px -20px rgba(25,28,26,.35);display:flex;flex-direction:column;min-width:0;z-index:20}
+.results-head{padding:24px;border-bottom:1px solid var(--outline);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.results-title{font-size:26px;font-weight:800;margin:0}
+.results-count{font-size:16px;font-weight:500;color:var(--muted);margin-left:8px}
+.cards{padding:20px;overflow:auto;display:flex;flex-direction:column;gap:20px}
+.card{background:#fff;border:1px solid var(--outline);border-radius:32px;overflow:hidden;box-shadow:var(--shadow-1);cursor:pointer;transition:.22s ease;display:flex;flex-direction:column}
+.card:hover{box-shadow:var(--shadow-2);transform:translateY(-1px)}
+.card.selected{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,106,58,.12),var(--shadow-2)}
+.card-media{height:232px;position:relative;background:var(--surface-high);display:grid;place-items:center;color:var(--muted);font-size:13px;overflow:hidden}
+.card-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .7s ease}
+.card:hover .card-media img{transform:scale(1.04)}
+.favorite{position:absolute;top:14px;right:14px;width:46px;height:46px;border:0;border-radius:50%;background:rgba(251,253,248,.9);display:grid;place-items:center;color:var(--muted);box-shadow:var(--shadow-1)}
+.price{position:absolute;left:16px;bottom:16px;background:var(--primary);color:#fff;border-radius:var(--pill);padding:9px 18px;font-size:18px;font-weight:800;box-shadow:var(--shadow-2)}
+.price small{font-size:14px;font-weight:500;opacity:.84}
+.card-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.card-title{font-size:18px;font-weight:800;margin:0;line-height:1.25}
+.rating,.type-badge{display:inline-flex;align-items:center;gap:4px;border-radius:var(--pill);padding:6px 10px;background:var(--surface-container);font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap}
+.type-badge.offer{background:var(--tertiary);color:var(--primary)}
+.type-badge.seek{background:var(--seek-soft);color:var(--seek)}
+.desc{margin:0;color:var(--muted);line-height:1.45;font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--tertiary);color:#3B4A43;border-radius:var(--pill);padding:6px 10px;font-size:12px;font-weight:700}
+.empty{display:none;text-align:center;color:var(--muted);padding:40px 20px}
+.drawer{position:fixed;inset:0;z-index:2000;display:none;background:rgba(25,28,26,.45);align-items:center;justify-content:center;padding:18px}
+.drawer.open{display:flex}
+.detail{width:min(460px,100%);max-height:88vh;overflow:auto;background:var(--surface);border-radius:32px;box-shadow:var(--shadow-3)}
+.detail-media{height:250px;position:relative;background:var(--surface-high);display:grid;place-items:center;color:var(--muted);overflow:hidden;border-radius:32px 32px 0 0}
+.detail-media img{width:100%;height:100%;object-fit:cover}
+.close{position:absolute;top:14px;right:14px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(25,28,26,.58);color:#fff;display:grid;place-items:center;cursor:pointer}
+.detail-body{padding:20px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.info{background:var(--surface-container);border-radius:16px;padding:10px 12px;min-width:0}
+.info span{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+.info b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-actions{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.primary-action,.secondary-action{border-radius:var(--pill);padding:14px 18px;font-weight:800;text-align:center}
+.primary-action{background:var(--primary);color:#fff}
+.secondary-action{background:#fff;color:var(--primary);border:1px solid var(--outline)}
+.report{border:0;background:transparent;color:var(--danger);font-weight:700;padding:8px;cursor:pointer}
+@media (max-width:980px){
+ .topbar{height:72px}.topbar-inner{gap:12px}.brand{font-size:22px}.nav{display:none}.actions .add-btn{padding:10px 16px}
+ .layout{padding-top:72px;grid-template-columns:1fr}.map-tools{left:14px;right:14px;top:14px}.results{position:absolute;left:0;right:0;bottom:0;max-height:46vh;border-left:0;border-top:1px solid var(--outline);border-radius:28px 28px 0 0}.results-head{padding:16px 18px}.results-title{font-size:21px}.cards{padding:14px;display:grid;grid-auto-flow:column;grid-auto-columns:82%;overflow-x:auto}.card-media{height:160px}.fab{right:18px;bottom:calc(46vh + 18px);padding:14px 18px}.detail-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
-
-<div id="map"></div>
-
-<div class="topbar">
- <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Menyuni ochish">
- <span class="bar bar1"></span>
- <span class="bar bar2"></span>
- <span class="bar bar3"></span>
- </button>
- <div class="brand">klapa.net</div>
- <div class="search">
- <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
- <input type="text" id="searchInput" placeholder="Universitet yoki tuman qidirish...">
+<header class="topbar">
+ <div class="topbar-inner">
+  <a class="brand" href="/">Sigamiz</a>
+  <nav class="nav">
+   <a class="active" href="/xarita">Map</a>
+   <a href="/about">About</a>
+   <a href="/#how-it-works">How it works</a>
+  </nav>
+  <div class="actions">
+   <a class="add-btn" href="https://t.me/klapa_net_bot?start=add" target="_blank">Add Listing</a>
+   <button class="icon-btn" aria-label="Profile"><span class="material-symbols-outlined">account_circle</span></button>
+  </div>
  </div>
- <div class="stat" id="listingCount">— ta joy</div>
- <a class="btn-add" href="https://t.me/klapa_net_bot?start=add" target="_blank">
- <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
- Joy qo'shish
- </a>
-</div>
+</header>
 
-<div class="filters-wrap">
- <button class="filters-btn" id="filtersBtn" onclick="toggleFiltersPanel()">
- <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="14" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="8" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="16" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
- Filters
- </button>
- <div class="filters-panel" id="filtersPanel">
- <div class="chip" data-filter="has_wifi">📶 Wi-Fi</div>
- <div class="chip" data-filter="has_ac">❄️ Kondёr</div>
- <div class="chip" data-filter="has_washing_machine">🧺 Kir yuvish</div>
- <div class="chip" data-filter="no_landlord_in_yard">🏡 Xo'jayinsiz</div>
- <div class="chip" data-filter="near_metro">🚇 Metro yaqin</div>
- </div>
-</div>
+<main class="layout">
+ <section class="map-wrap">
+  <div class="map-fallback"></div>
+  <div id="map"></div>
+  <div class="map-tools">
+   <label class="search-box">
+    <span class="material-symbols-outlined">search</span>
+    <input id="searchInput" type="search" placeholder="Tuman yoki Universitet qidirish...">
+    <span class="material-symbols-outlined">tune</span>
+   </label>
+   <div class="chip-row" id="filters">
+    <button class="chip active" data-type="all" type="button">Hammasi</button>
+    <button class="chip" data-type="offer" type="button">Uy bor</button>
+    <button class="chip" data-type="seek" type="button">Qidiryapti</button>
+    <button class="chip" data-filter="has_wifi" type="button"><span class="material-symbols-outlined" style="font-size:16px">wifi</span>Wi-Fi</button>
+    <button class="chip" data-filter="has_ac" type="button">Konditsioner</button>
+    <button class="chip" data-filter="has_washing_machine" type="button">Kir yuvish</button>
+    <button class="chip" data-filter="near_metro" type="button">Metro</button>
+   </div>
+  </div>
+  <a class="fab" href="https://t.me/klapa_net_bot?start=add" target="_blank">
+   <span class="material-symbols-outlined">send</span>
+   Telegram Bot
+  </a>
+ </section>
 
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-<div class="sidebar" id="sidebar">
- <div class="sidebar-brand">
- <div class="brand">klapa.net</div>
- <button class="sidebar-close" onclick="closeSidebar()">✕</button>
- </div>
- <nav class="sidebar-nav">
- <a href="/">Asosiy</a>
- <a href="/xarita" class="current">Xarita</a>
- <a href="/elonlar">E'lonlar</a>
- <a href="/qanday-ishlaydi">Qanday ishlaydi</a>
- <a href="/qoidalar">Qoidalar</a>
- <a href="/savollar">Savollar</a>
- </nav>
- <div class="sidebar-footer">
- <a class="btn-add" style="width:100%;justify-content:center;" href="https://t.me/klapa_net_bot?start=add" target="_blank">Joy qo'shish</a>
- </div>
-</div>
+ <aside class="results">
+  <div class="results-head">
+   <h1 class="results-title">Natijalar <span class="results-count" id="resultCount">0 ta joy</span></h1>
+   <button class="icon-btn" aria-label="Sort"><span class="material-symbols-outlined">sort</span></button>
+  </div>
+  <div class="cards" id="cards"></div>
+  <p class="empty" id="emptyState">Bu filtrga mos e'lon topilmadi.</p>
+ </aside>
+</main>
 
-<div class="legend">
- <div class="legend-item"><span class="dot" style="background:var(--primary)"></span> Bo'sh joylar</div>
- <div class="legend-item"><span class="dot" style="background:var(--surface-container-high);border:1px solid var(--outline)"></span> Ko'rib chiqilmoqda</div>
-</div>
-
-<div class="empty-toast" id="emptyToast">Bu filtrga mos joy topilmadi</div>
-
-<div class="overlay" id="overlay">
- <div class="modal">
- <div class="modal-header">
- <div class="carousel" id="carousel"></div>
- <button class="modal-close" onclick="closeModal()">✕</button>
- </div>
- <div class="modal-body" id="modalBody"></div>
- </div>
+<div class="drawer" id="detailDrawer">
+ <article class="detail">
+  <div class="detail-media" id="detailMedia">
+   <button class="close" type="button" onclick="closeDetail()"><span class="material-symbols-outlined">close</span></button>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+ </article>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ---------- Map setup ----------
-const map = L.map('map', { zoomControl: false }).setView([41.2995, 69.2401], 12);
-L.control.zoom({ position: 'bottomright' }).addTo(map);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '&copy; OpenStreetMap contributors',
- maxZoom: 19
-}).addTo(map);
-
-// ---------- Demo fallback data (used only if /api/listings is unreachable) ----------
 const DEMO_LISTINGS = [
- { id: 1, lat: 41.3111, lng: 69.2797, price: 700000, people_needed: 1, has_wifi:1, has_ac:1, has_washing_machine:0, no_landlord_in_yard:1, near_metro:1, telegram_username:"aziz_tatu", photos:[] },
- { id: 2, lat: 41.2856, lng: 69.2034, price: 850000, people_needed: 2, has_wifi:1, has_ac:0, has_washing_machine:1, no_landlord_in_yard:0, near_metro:0, telegram_username:"madina_wiut", photos:[] },
- { id: 3, lat: 41.3400, lng: 69.3200, price: 600000, people_needed: 1, has_wifi:0, has_ac:1, has_washing_machine:1, no_landlord_in_yard:1, near_metro:0, telegram_username:"nigina_inha", photos:[], status:"hidden_pending_review" },
+ {id:1, listing_type:"offer", university:"TATU", district:"Yunusobod", housing_type:"Kvartira", room_count:3, description:"3 xonali kvartira, 2 ta bola kerak. TATU ga yaqin.", phone_number:"+998901234567", lat:41.3111, lng:69.2797, price:700000, people_needed:2, has_wifi:1, has_ac:0, has_washing_machine:1, no_landlord_in_yard:1, near_metro:1, telegram_username:"aziz_tatu", photos:["https://lh3.googleusercontent.com/aida-public/AB6AXuA-1dOpV1KSbu1vAHSzusu2RnGHUkL2tTLWzkhb2gcBqWHoFRmHxJhGsFhi0pK0z77TPd9S6JZuDyOcWyGB7QAUQSClwiLdoU1uRPrrVafwWaqAARlpPUof59TgHigEXDdEsgfEVV6QwaEhrd98WJitPRRaaosIKP_MzoAEf4p-ORxg352gWCEjF1QH4yV1hB8wPB4e-jipp9QF8jQhbvT3MPfkwJDEU5Puf2X70pzLmcGoP13bIz0fOMl0HP_a9Wz9-8A4lAbB7os"]},
+ {id:2, listing_type:"seek", university:"WIUT", district:"Chilonzor", housing_type:null, room_count:null, description:"Faqat talaba qizlar uchun sheriklikka. Metrogacha 5 daqiqa.", phone_number:null, lat:41.2856, lng:69.2034, price:450000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:0, no_landlord_in_yard:0, near_metro:1, telegram_username:"madina_wiut", photos:["https://lh3.googleusercontent.com/aida-public/AB6AXuBbnMpjSpM11unrKE1PWI2lnM5m-bAakkaTbs2Z-N3V0BaZm-MRz5fZIgUhmvTX-HBOWJz83JYcLh_SYUL8jmaek_vPSAthy_LVpV6wdZdhO2ZUw6P7dcZ-llGcc7dUqVvJgMmcREEiC917O-JnShyf_4QYLOh_6Ov83kkS8x6BX-PSu8f59EI9X6I-wewm6Ozhr4FYjMMZIcFI0lvJ8KCmnJSrQ6thzdweIBkAJM5BWqjN4zYUGYEvxQUFLhU8Ok71fB_oW_PPOiM"]},
+ {id:3, listing_type:"offer", university:"INHA", district:"Mirzo-Ulug'bek", housing_type:"Xonadonli uy", room_count:2, description:"Sokin joy, internet bor, hovlida xojayin turmaydi.", phone_number:"+998931112233", lat:41.34, lng:69.32, price:850000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:1, no_landlord_in_yard:1, near_metro:0, telegram_username:"nigina_inha", photos:[]}
 ];
 
-let allListings = [];
-let activeFilters = new Set();
-let markers = [];
+let map, allListings = [], markers = [], activeType = "all", query = "";
+const activeFilters = new Set();
+const amenityLabels = {
+ has_wifi:["wifi","Wi-Fi"], has_ac:["ac_unit","Konditsioner"],
+ has_washing_machine:["local_laundry_service","Kir yuvish"], no_landlord_in_yard:["home","Xo'jayinsiz"],
+ near_metro:["train","Metro"]
+};
 
+function escapeHtml(value){
+ return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
+}
+function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " so'm"; }
+function compactPrice(value){
+ const price = Number(value || 0);
+ if(price >= 1000000) return (price / 1000000).toFixed(price % 1000000 ? 1 : 0) + "m";
+ return Math.round(price / 1000) + "k";
+}
+function typeInfo(item){
+ return item.listing_type === "seek"
+  ? {key:"seek", label:"Qidiryapti", sub:`${item.people_needed || 1} kishi turar joy qidiryapti`}
+  : {key:"offer", label:"Uy bor", sub:`${item.people_needed || 1} xonadosh kerak`};
+}
+function titleFor(item){ return [item.district, item.university].filter(Boolean).join(", ") || "Toshkent"; }
+function matches(item){
+ if(activeType !== "all" && item.listing_type !== activeType) return false;
+ for(const filter of activeFilters){ if(!item[filter]) return false; }
+ if(!query) return true;
+ return [item.district,item.university,item.housing_type,item.description,item.telegram_username].filter(Boolean).join(" ").toLowerCase().includes(query);
+}
+function photoFor(item){ return item.photos && item.photos.length ? item.photos[0] : ""; }
+function tagsFor(item, limit = 3){
+ return Object.keys(amenityLabels).filter(key => item[key]).slice(0, limit).map(key => {
+  const [icon,label] = amenityLabels[key];
+  return `<span class="tag"><span class="material-symbols-outlined" style="font-size:16px">${icon}</span>${escapeHtml(label)}</span>`;
+ }).join("");
+}
+function initMap(){
+ if(!window.L) return;
+ map = L.map("map", { zoomControl:false }).setView([41.2995,69.2401], 12);
+ L.control.zoom({ position:"bottomleft" }).addTo(map);
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:"&copy; OpenStreetMap contributors" }).addTo(map);
+}
 async function loadListings(){
- try {
- const res = await fetch('/api/listings');
- if(!res.ok) throw new Error('bad response');
- allListings = await res.json();
- if(!Array.isArray(allListings) || allListings.length === 0) throw new Error('empty');
- } catch(e){
- // Fallback so the design can be previewed without a running backend
- allListings = DEMO_LISTINGS;
- }
- renderMarkers();
+ try{
+  const res = await fetch("/api/listings");
+  if(!res.ok) throw new Error("Bad response");
+  allListings = await res.json();
+  if(!Array.isArray(allListings) || !allListings.length) throw new Error("Empty response");
+ }catch(e){ allListings = DEMO_LISTINGS; }
+ render();
 }
-
-function formatPrice(p){
- return new Intl.NumberFormat('ru-RU').format(p) + " so'm";
+function render(){
+ const filtered = allListings.filter(matches);
+ document.getElementById("resultCount").textContent = `${filtered.length} ta joy`;
+ document.getElementById("emptyState").style.display = filtered.length ? "none" : "block";
+ renderCards(filtered);
+ renderMarkers(filtered);
 }
-
-function renderMarkers(){
- markers.forEach(m => map.removeLayer(m));
+function renderMarkers(items){
+ if(!map) return;
+ markers.forEach(marker => map.removeLayer(marker));
  markers = [];
-
- const filtered = allListings.filter(l => {
- for (const f of activeFilters){ if(!l[f]) return false; }
- return true;
- });
-
- document.getElementById('listingCount').innerHTML = `<b>${filtered.length}</b> ta joy`;
-
- if(filtered.length === 0 && activeFilters.size > 0){
- const toast = document.getElementById('emptyToast');
- toast.style.display = 'block';
- setTimeout(()=> toast.style.display = 'none', 2000);
- }
-
- filtered.forEach(item => {
- const isReviewing = item.status === 'hidden_pending_review';
- const icon = L.divIcon({
- className: '',
- html: `<div class="price-pin ${isReviewing ? 'reviewing' : ''}">${formatPrice(item.price)}</div>`,
- iconSize: null
- });
- const marker = L.marker([item.lat, item.lng], { icon }).addTo(map);
- marker.on('click', () => openModal(item));
- markers.push(marker);
+ items.forEach(item => {
+  const lat = Number(item.lat), lng = Number(item.lng);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const type = typeInfo(item);
+  const icon = L.divIcon({
+   className:"",
+   html:`<div class="pin ${item.status === "hidden_pending_review" ? "reviewing" : type.key}"><span>${escapeHtml(compactPrice(item.price))}</span></div>`
+  });
+  const marker = L.marker([lat,lng], { icon }).addTo(map);
+  marker.on("click", () => openDetail(item.id));
+  markers.push(marker);
  });
 }
-
-// ---------- Filters ----------
-document.querySelectorAll('.filters-panel .chip').forEach(chip => {
- chip.addEventListener('click', () => {
- const key = chip.dataset.filter;
- if(activeFilters.has(key)){ activeFilters.delete(key); chip.classList.remove('active'); }
- else { activeFilters.add(key); chip.classList.add('active'); }
- renderMarkers();
- });
-});
-
-function toggleFiltersPanel(){
- document.getElementById('filtersPanel').classList.toggle('open');
+function renderCards(items){
+ const cards = document.getElementById("cards");
+ cards.innerHTML = items.map(item => {
+  const type = typeInfo(item);
+  const photo = photoFor(item);
+  return `<article class="card" data-id="${item.id}" onclick="openDetail(${item.id})">
+   <div class="card-media">
+    ${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}
+    <button class="favorite" type="button" onclick="event.stopPropagation()"><span class="material-symbols-outlined">favorite_border</span></button>
+    <div class="price">${formatPrice(item.price)} <small>/oy</small></div>
+   </div>
+   <div class="card-body">
+    <div class="card-top">
+     <h2 class="card-title">${escapeHtml(titleFor(item))}</h2>
+     <span class="type-badge ${type.key}">${escapeHtml(type.label)}</span>
+    </div>
+    <p class="desc">${escapeHtml(item.description || type.sub)}</p>
+    <div class="tags">${tagsFor(item)}</div>
+   </div>
+  </article>`;
+ }).join("");
 }
-document.addEventListener('click', (e) => {
- const wrap = document.querySelector('.filters-wrap');
- if(wrap && !wrap.contains(e.target)){
- document.getElementById('filtersPanel').classList.remove('open');
- }
-});
-
-// ---------- Sidebar ----------
-function toggleSidebar(){
- document.getElementById('sidebar').classList.toggle('open');
- document.getElementById('sidebarOverlay').classList.toggle('open');
- document.getElementById('sidebarToggle').classList.toggle('open');
+async function fetchDetail(item){
+ if(item._detailLoaded) return item;
+ try{
+  const res = await fetch(`/api/listings/${item.id}`);
+  if(res.ok){
+   const detail = await res.json();
+   if(detail && !detail.error) Object.assign(item, detail, {_detailLoaded:true});
+  }
+ }catch(e){}
+ return item;
 }
-function closeSidebar(){
- document.getElementById('sidebar').classList.remove('open');
- document.getElementById('sidebarOverlay').classList.remove('open');
- document.getElementById('sidebarToggle').classList.remove('open');
+async function openDetail(id){
+ let item = allListings.find(entry => Number(entry.id) === Number(id));
+ if(!item) return;
+ item = await fetchDetail(item);
+ document.querySelectorAll(".card").forEach(card => card.classList.toggle("selected", Number(card.dataset.id) === Number(id)));
+ const type = typeInfo(item), photo = photoFor(item);
+ document.getElementById("detailMedia").innerHTML = `${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}<button class="close" type="button" onclick="closeDetail()"><span class="material-symbols-outlined">close</span></button>`;
+ const telegram = (item.telegram_username || "").replace(/^@/,"").trim();
+ const phone = (item.phone_number || "").trim();
+ const infos = [
+  item.district && ["Tuman", item.district],
+  item.university && ["Universitet", item.university],
+  item.housing_type && ["Uy turi", item.housing_type],
+  item.room_count && ["Xonalar", `${item.room_count} xona`]
+ ].filter(Boolean).map(([label,value]) => `<div class="info"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join("");
+ document.getElementById("detailBody").innerHTML = `
+  <span class="type-badge ${type.key}">${escapeHtml(type.label)}</span>
+  <h2 style="margin:12px 0 4px;font-size:24px">${formatPrice(item.price)} / oyiga</h2>
+  <p class="desc" style="-webkit-line-clamp:unset">${escapeHtml(item.description || type.sub)}</p>
+  ${infos ? `<div class="detail-grid">${infos}</div>` : ""}
+  <div class="tags">${tagsFor(item, 8)}</div>
+  <div class="detail-actions">
+   ${telegram ? `<a class="primary-action" href="https://t.me/${encodeURIComponent(telegram)}" target="_blank">Telegram orqali yozish</a>` : ""}
+   ${phone ? `<a class="secondary-action" href="tel:${escapeHtml(phone.replace(/[^\\d+]/g,""))}">Telefon qilish</a>` : ""}
+   <button class="report" type="button" onclick="reportListing(${item.id})">Shikoyat qilish</button>
+  </div>`;
+ document.getElementById("detailDrawer").classList.add("open");
 }
-
-// ---------- Modal ----------
-let currentPhotoIndex = 0;
-let currentPhotos = [];
-
-function openModal(item){
- currentPhotoIndex = 0;
- currentPhotos = (item.photos && item.photos.length > 0) ? item.photos : ['PLACEHOLDER'];
-
- renderCarousel();
-
- const amenityLabels = {
- has_wifi: '📶 Wi-Fi', has_ac: '❄️ Kondёr', has_washing_machine: '🧺 Kir yuvish mashinasi',
- no_landlord_in_yard: "🏡 Xo'jayinlarsiz", near_metro: '🚇 Metro yaqin'
- };
- const chips = Object.keys(amenityLabels)
- .filter(k => item[k])
- .map(k => `<span class="tag">${amenityLabels[k]}</span>`).join('');
-
- document.getElementById('modalBody').innerHTML = `
- <div class="modal-price">${formatPrice(item.price)} / oyiga</div>
- <div class="modal-sub">+${item.people_needed} kishi kerak</div>
- <div class="modal-chips">${chips || ''}</div>
- <div class="modal-actions">
- <a class="btn-primary" href="https://t.me/${item.telegram_username}" target="_blank">Telegram orqali yozish</a>
- <button class="btn-report" onclick="reportListing(${item.id})">Shikoyat qilish</button>
- </div>
- `;
- document.getElementById('overlay').classList.add('open');
-}
-
-function renderCarousel(){
- const el = document.getElementById('carousel');
- if(currentPhotos[0] === 'PLACEHOLDER'){
- el.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:13px;">Rasm yo'q</div>`;
- return;
- }
- el.innerHTML = currentPhotos.map((p,i) => `<img src="${p}" class="${i===currentPhotoIndex?'active':''}">`).join('') +
- `<div class="carousel-nav">${currentPhotos.map((_,i)=>`<div class="carousel-dot ${i===currentPhotoIndex?'active':''}"></div>`).join('')}</div>`;
-}
-
-function closeModal(){
- document.getElementById('overlay').classList.remove('open');
-}
-document.addEventListener('click', (e) => {
- if(e.target.id === 'overlay') closeModal();
-});
-
+function closeDetail(){ document.getElementById("detailDrawer").classList.remove("open"); }
 async function reportListing(id){
  const reason = prompt("Shikoyat sababi (masalan: makler, spam):");
  if(!reason) return;
- try {
- await fetch(`/api/report?listing_id=${id}&reason=${encodeURIComponent(reason)}`, { method: 'POST' });
- alert("Shikoyat qabul qilindi. Rahmat!");
- } catch(e){
- alert("Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
- }
- closeModal();
+ try{ await fetch(`/api/report?listing_id=${id}&reason=${encodeURIComponent(reason)}`, { method:"POST" }); alert("Shikoyat qabul qilindi. Rahmat!"); }
+ catch(e){ alert("Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring."); }
+ closeDetail();
 }
-
-// ---------- Search (client-side, filters by nothing yet — placeholder for university/district search) ----------
-document.getElementById('searchInput').addEventListener('input', (e) => {
- // Hook point: once university/district data is attached to listings,
- // filter `allListings` here and call renderMarkers().
-});
-
+document.getElementById("searchInput").addEventListener("input", event => { query = event.target.value.trim().toLowerCase(); render(); });
+document.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => {
+ activeType = button.dataset.type;
+ document.querySelectorAll("[data-type]").forEach(item => item.classList.toggle("active", item === button));
+ render();
+}));
+document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => {
+ const key = button.dataset.filter;
+ activeFilters.has(key) ? activeFilters.delete(key) : activeFilters.add(key);
+ button.classList.toggle("active");
+ render();
+}));
+document.getElementById("detailDrawer").addEventListener("click", event => { if(event.target.id === "detailDrawer") closeDetail(); });
+initMap();
 loadListings();
 </script>
 </body>

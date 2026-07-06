@@ -25,11 +25,17 @@ bot.add_custom_filter(StateFilter(bot))
 bot.add_custom_filter(IsDigitFilter())
 
 class AddListingStates(StatesGroup):
+    listing_type = State()
     location = State()
     university = State()
+    district = State()
+    housing_type = State()
+    room_count = State()
     price = State()
     roommates_needed = State()
     amenities = State()
+    description = State()
+    phone = State()
     photos = State()
     confirm = State()
 
@@ -52,6 +58,24 @@ def is_banned(user_id):
     conn.close()
     return res is not None
 
+def has_active_listing(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM listings WHERE telegram_user_id = ? AND status = 'active'", (user_id,))
+    res = cursor.fetchone()
+    conn.close()
+    return res is not None
+
+def get_listing_photo_column(cursor):
+    columns = {row[1] for row in cursor.execute("PRAGMA table_info(listing_photos)").fetchall()}
+    if "file_path" in columns:
+        return "file_path"
+    if "photo_path" in columns:
+        return "photo_path"
+    return "file_path"
+
+DISTRICTS = ["Мирзо-Улугбекский", "Юнусабадский", "Мирабадский", "Чиланзарский", "Яккасарайский", "Шайхантахурский", "Учтепинский", "Сергелийский", "Яшнободский", "Бектемирский", "Алмазарский"]
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message, "Salom! Klapa.net botiga xush kelibsiz.\n\nE'lon qo'shish uchun /add yoki e'lonlaringizni ko'rish uchun /my buyrug'ini tanlang.\n\nQoidalar:\n- Faqat xonadosh qidirish (butun kvartira emas);\n- Maklerlar taqiqlanadi;\n- E'lon 7 kundan keyin avtomatik o'chiriladi.")
@@ -61,8 +85,25 @@ def start_add_flow(message):
     if is_banned(message.from_user.id):
         bot.reply_to(message, "Sizga e'lon qo'shish taqiqlangan.")
         return
-    bot.set_state(message.from_user.id, AddListingStates.location, message.chat.id)
-    bot.reply_to(message, "Iltimos, lokatsiyangizni yuboring.")
+    if has_active_listing(message.from_user.id):
+        bot.reply_to(message, "Sizda allaqachon faol e'lon bor. Yangisini qo'shishdan oldin uni /my orqali o'chiring yoki tugating.")
+        return
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("🏠 Uyim bor, xonadosh qidiryapman", callback_data="type_offer"),
+        types.InlineKeyboardButton("🔍 Turar joy qidiryapman", callback_data="type_seek")
+    )
+    bot.reply_to(message, "Siz e'lon beryapsizmi yoki qidiryapsizmi?", reply_markup=markup)
+    bot.set_state(message.from_user.id, AddListingStates.listing_type, message.chat.id)
+
+@bot.callback_query_handler(state=AddListingStates.listing_type, func=lambda call: call.data.startswith("type_"))
+def handle_listing_type(call):
+    listing_type = call.data.split("_")[1] # "offer" или "seek"
+    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        data['listing_type'] = listing_type
+    bot.edit_message_text("Tanlandi.", call.message.chat.id, call.message.message_id)
+    bot.send_message(call.message.chat.id, "Iltimos, lokatsiyangizni yuboring.")
+    bot.set_state(call.from_user.id, AddListingStates.location, call.message.chat.id)
 
 import traceback
 @bot.message_handler(state=AddListingStates.location, content_types=['location'])
@@ -89,8 +130,32 @@ def handle_university(call):
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['university'] = uni
     bot.edit_message_text(f"University saved: {uni}", call.message.chat.id, call.message.message_id)
-    bot.send_message(call.message.chat.id, "Price per person (UZS):")
-    bot.set_state(call.from_user.id, AddListingStates.price, call.message.chat.id)
+    
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    for dist in DISTRICTS:
+        markup.add(types.InlineKeyboardButton(dist, callback_data=f"dist_{dist}"))
+    bot.send_message(call.message.chat.id, "Iltimos, tumanni tanlang:", reply_markup=markup)
+    bot.set_state(call.from_user.id, AddListingStates.district, call.message.chat.id)
+
+@bot.callback_query_handler(state=AddListingStates.district, func=lambda call: call.data.startswith("dist_"))
+def handle_district(call):
+    district = call.data.split("_", 1)[1]
+    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        data['district'] = district
+        listing_type = data.get('listing_type')
+        
+    bot.edit_message_text(f"Tuman: {district}", call.message.chat.id, call.message.message_id)
+    
+    if listing_type == 'offer':
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        options = ["Kvartira", "Xonadonli uy", "Yotoqxona", "Boshqa"]
+        for opt in options:
+            markup.add(types.InlineKeyboardButton(opt, callback_data=f"house_{opt}"))
+        bot.send_message(call.message.chat.id, "Uy turini tanlang:", reply_markup=markup)
+        bot.set_state(call.from_user.id, AddListingStates.housing_type, call.message.chat.id)
+    else:
+        bot.send_message(call.message.chat.id, "Price per person (UZS):")
+        bot.set_state(call.from_user.id, AddListingStates.price, call.message.chat.id)
 
 # 3.4. Update Roommates section to inline buttons
 @bot.message_handler(state=AddListingStates.price, is_digit=True)
@@ -121,17 +186,55 @@ def handle_roommates(call):
     bot.edit_message_text("Qulayliklarni tanlang:", call.message.chat.id, call.message.message_id, reply_markup=markup)
     bot.set_state(call.from_user.id, AddListingStates.amenities, call.message.chat.id)
 
+@bot.callback_query_handler(state=AddListingStates.housing_type, func=lambda call: call.data.startswith("house_"))
+def handle_housing_type(call):
+    h_type = call.data.split("_", 1)[1]
+    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        data['housing_type'] = h_type
+    bot.edit_message_text(f"Uy turi: {h_type}", call.message.chat.id, call.message.message_id)
+    bot.send_message(call.message.chat.id, "Nechta xona?")
+    bot.set_state(call.from_user.id, AddListingStates.room_count, call.message.chat.id)
+
+@bot.message_handler(state=AddListingStates.room_count, is_digit=True)
+def handle_room_count(message):
+    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        data['room_count'] = int(message.text)
+    bot.send_message(message.chat.id, "Price per person (UZS):")
+    bot.set_state(message.from_user.id, AddListingStates.price, message.chat.id)
+
 @bot.callback_query_handler(state=AddListingStates.amenities, func=lambda call: True)
 def handle_amenities(call):
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         if call.data == "done":
-            data['photos'] = []
-            bot.send_message(call.message.chat.id, "Amenities saved. Send up to 5 photos. Type /done when finished.")
-            bot.set_state(call.from_user.id, AddListingStates.photos, call.message.chat.id)
+            bot.edit_message_text("Qulayliklar saqlandi.", call.message.chat.id, call.message.message_id)
+            bot.send_message(call.message.chat.id, "Qisqacha tavsif yozing (yoki /skip):")
+            bot.set_state(call.from_user.id, AddListingStates.description, call.message.chat.id)
+            return
+
+        amenities = data.setdefault('amenities', [])
+        if call.data in amenities:
+            amenities.remove(call.data)
+            bot.answer_callback_query(call.id, f"Removed {call.data}")
         else:
-            if call.data not in data['amenities']:
-                data['amenities'].append(call.data)
-                bot.answer_callback_query(call.id, f"Added {call.data}")
+            amenities.append(call.data)
+            bot.answer_callback_query(call.id, f"Added {call.data}")
+
+@bot.message_handler(state=AddListingStates.description, content_types=['text'])
+def handle_description(message):
+    text = (message.text or "").strip()
+    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        data['description'] = None if text.lower() == "/skip" else text[:1000]
+    bot.send_message(message.chat.id, "Telefon raqamingizni yuboring (ixtiyoriy, /skip mumkin):")
+    bot.set_state(message.from_user.id, AddListingStates.phone, message.chat.id)
+
+@bot.message_handler(state=AddListingStates.phone, content_types=['text'])
+def handle_phone(message):
+    text = (message.text or "").strip()
+    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        data['phone'] = None if text.lower() == "/skip" else text[:40]
+        data['photos'] = []
+    bot.send_message(message.chat.id, "Rasmlarni yuboring (5 tagacha). Tugatgach /done yozing.")
+    bot.set_state(message.from_user.id, AddListingStates.photos, message.chat.id)
 
 @bot.message_handler(state=AddListingStates.photos, content_types=['photo'])
 def handle_photos(message):
@@ -148,9 +251,15 @@ def confirm_listing(message):
     with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
         summary = (
             f"Summary:\n"
+            f"Type: {data.get('listing_type')}\n"
             f"University: {data.get('university')}\n"
+            f"District: {data.get('district')}\n"
+            f"Housing type: {data.get('housing_type') or 'N/A'}\n"
+            f"Rooms: {data.get('room_count') or 'N/A'}\n"
             f"Price: {data.get('price')} UZS\n"
             f"Roommates needed: {data.get('needed')}\n"
+            f"Description: {data.get('description') or 'None'}\n"
+            f"Phone: {data.get('phone') or 'None'}\n"
             f"Amenities: {', '.join(data.get('amenities', []))}\n"
             f"Photos: {len(data.get('photos', []))}"
         )
@@ -186,15 +295,17 @@ def save_listing_to_db(user_id, chat_id, username=None):
         needed_int = 3 if needed_val == '3' else int(needed_val)
         
         cursor.execute("""
-            INSERT INTO listings (telegram_user_id, telegram_username, university, lat, lng, price_per_person, people_needed, 
+            INSERT INTO listings (telegram_user_id, telegram_username, listing_type, university, district, housing_type, description, phone_number, room_count, lat, lng, price_per_person, people_needed, 
                                   has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
-        """, (user_id, username or "hidden", data.get('university'), data['lat'], data['lng'], 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
+        """, (user_id, username or "hidden", data.get('listing_type'), data.get('university'), data.get('district'), data.get('housing_type'), 
+              data.get('description'), data.get('phone'), data.get('room_count'), data['lat'], data['lng'], 
               data['price'], needed_int, has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro))
         listing_id = cursor.lastrowid
+        photo_column = get_listing_photo_column(cursor)
         
         os.makedirs(f"{UPLOAD_DIR}/{listing_id}", exist_ok=True)
-        for i, file_id in enumerate(data['photos']):
+        for i, file_id in enumerate(data.get('photos', [])):
             file_info = bot.get_file(file_id)
             downloaded_file = bot.download_file(file_info.file_path)
             img = Image.open(io.BytesIO(downloaded_file))
@@ -204,7 +315,7 @@ def save_listing_to_db(user_id, chat_id, username=None):
                 img = img.resize((1200, height), Image.Resampling.LANCZOS)
             file_path = f"{UPLOAD_DIR}/{listing_id}/{i}.jpg"
             img.save(file_path, 'JPEG', quality=80)
-            cursor.execute("INSERT INTO listing_photos (listing_id, file_path) VALUES (?, ?)", (listing_id, file_path))
+            cursor.execute(f"INSERT INTO listing_photos (listing_id, {photo_column}) VALUES (?, ?)", (listing_id, file_path))
         
         conn.commit()
         conn.close()
