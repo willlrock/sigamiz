@@ -313,18 +313,22 @@ def handle_gender_author(call):
     bot.answer_callback_query(call.id)
     bot.edit_message_text(f"Jins: {gender_label(gender)}", call.message.chat.id, call.message.message_id)
     location_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    location_markup.add(types.KeyboardButton("📍 Lokatsiyani yuborish", request_location=True))
+    location_markup.add(types.KeyboardButton("Lokatsiyani yuborish", request_location=True))
     bot.send_message(call.message.chat.id, "Uy joylashgan taxminiy lokatsiyani yuboring.", reply_markup=location_markup)
     bot.set_state(call.from_user.id, AddListingStates.location, call.message.chat.id)
 
 
-@bot.message_handler(state=AddListingStates.location, content_types=["location"])
+@bot.message_handler(content_types=["location"])
 def handle_location(message):
     try:
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+            if data.get("listing_type") != "offer" or not data.get("author_gender"):
+                bot.reply_to(message, "Lokatsiya qabul qilindi, lekin e'lon jarayoni topilmadi. Iltimos, /add orqali qayta boshlang.")
+                return
             data["lat"], data["lng"] = blur_location(message.location.latitude, message.location.longitude)
 
         buttons = [types.InlineKeyboardButton(uni, callback_data=f"uni_{uni}") for uni in UNIVERSITIES]
+        bot.send_message(message.chat.id, "Lokatsiya saqlandi.", reply_markup=types.ReplyKeyboardRemove())
         bot.send_message(
             message.chat.id,
             "Universitetni tanlang:",
