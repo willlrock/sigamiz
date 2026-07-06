@@ -222,8 +222,8 @@ async function loadListings(){
   const res = await fetch("/api/listings");
   if(!res.ok) throw new Error("Bad response");
   allListings = await res.json();
-  if(!Array.isArray(allListings) || !allListings.length) throw new Error("Empty response");
- }catch(e){ allListings = DEMO_LISTINGS; }
+  if(!Array.isArray(allListings)) throw new Error("Invalid response");
+ }catch(e){ console.error("Failed to load listings", e); allListings = []; }
  render();
 }
 function render(){

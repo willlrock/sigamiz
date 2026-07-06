@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import sqlite3
@@ -22,7 +22,7 @@ def send_admin_notification(text):
         except Exception as e:
             print(f"Failed to send admin notification: {e}")
 
-# Базовый путь
+# Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
@@ -30,31 +30,76 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Инициализация БД
+# Database initialization
+def ensure_columns(cursor, table_name, columns):
+    existing = {row[1] for row in cursor.execute(f"PRAGMA table_info({table_name})").fetchall()}
+    for column_name, column_sql in columns.items():
+        if column_name not in existing:
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}")
+            existing.add(column_name)
+
+def migrate_db(cursor):
+    ensure_columns(cursor, "listings", {
+        "listing_type": "TEXT NOT NULL DEFAULT 'seek'",
+        "university": "TEXT",
+        "district": "TEXT",
+        "housing_type": "TEXT",
+        "description": "TEXT",
+        "phone_number": "TEXT",
+        "room_count": "INTEGER",
+        "has_washing_machine": "BOOLEAN DEFAULT 0",
+        "no_landlord_in_yard": "BOOLEAN DEFAULT 0",
+        "near_metro": "BOOLEAN DEFAULT 0",
+        "report_count": "INTEGER DEFAULT 0",
+        "created_at": "DATETIME",
+    })
+    ensure_columns(cursor, "listing_photos", {
+        "file_path": "TEXT",
+        "sort_order": "INTEGER DEFAULT 0",
+    })
+    ensure_columns(cursor, "reports", {
+        "reporter_telegram_id": "INTEGER",
+        "reason": "TEXT",
+        "created_at": "DATETIME",
+    })
+    ensure_columns(cursor, "banned_users", {
+        "reason": "TEXT",
+        "banned_at": "DATETIME",
+    })
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Читаем схему из файла и выполняем
+    # Apply base schema and lightweight migrations for existing SQLite files.
     with open(os.path.join(BASE_DIR, "backend", "schema.sql"), "r", encoding="utf-8") as f:
         schema = f.read()
     cursor.executescript(schema)
+    migrate_db(cursor)
         
-    # Засеиваем тестовыми данными, если пусто
+    # Seed demo data only when explicitly enabled.
     if cursor.execute("SELECT count(*) FROM listings").fetchone()[0] == 0:
         seed_demo = os.getenv("SEED_DEMO_DATA", "false").lower() == "true"
         if seed_demo:
             expires_at = datetime.now() + timedelta(days=7)
             cursor.execute("""
-                INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, has_wifi, has_ac, status, expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (000000000, "demo_user", 41.2995, 69.2401, 1500000, 1, 1, 1, 'active', expires_at))
+                INSERT INTO listings (
+                    telegram_user_id, telegram_username, listing_type, university, district, housing_type, description,
+                    lat, lng, price_per_person, people_needed, has_wifi, has_ac, has_washing_machine,
+                    no_landlord_in_yard, near_metro, status, expires_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                0, "demo_user", "offer", "TATU", "Yunusobod", "Kvartira",
+                "Demo e'lon: 2 ta talaba uchun joy bor.", 41.2995, 69.2401,
+                1500000, 1, 1, 1, 1, 1, 1, "active", expires_at
+            ))
     conn.commit()
     conn.close()
 
 init_db()
 
-# Функция очистки устаревших объявлений
+# Expiration cleanup
 def delete_expired_listings():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -62,9 +107,9 @@ def delete_expired_listings():
     cursor.execute("UPDATE listings SET status = 'expired' WHERE expires_at < ?", (now,))
     conn.commit()
     conn.close()
-    print(f"[{now}] Пометка старых объявлений как 'expired' выполнена.")
+    print(f"[{now}] Expired listings marked as expired.")
 
-# Запуск планировщика
+# Scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(delete_expired_listings, 'interval', days=1)
 scheduler.start()
@@ -77,6 +122,8 @@ def get_db():
 
 def get_photo_path_column(cursor):
     columns = {row[1] for row in cursor.execute("PRAGMA table_info(listing_photos)").fetchall()}
+    if "file_path" in columns and "photo_path" in columns:
+        return "COALESCE(file_path, photo_path)"
     if "file_path" in columns:
         return "file_path"
     if "photo_path" in columns:
@@ -195,13 +242,29 @@ def get_listing_detail(listing_id: int):
 async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
     conn = get_db()
     cursor = conn.cursor()
-    # 1. Вставляем жалобу
+    owner_row = cursor.execute(
+        "SELECT telegram_user_id, report_count FROM listings WHERE id = ?",
+        (listing_id,),
+    ).fetchone()
+    if not owner_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Listing not found")
+
     report_columns = {row[1] for row in cursor.execute("PRAGMA table_info(reports)").fetchall()}
     reporter_column = None
-    if "reporter_telegram_id" in report_columns:
-        reporter_column = "reporter_telegram_id"
-    elif "reporter_telegram_user_id" in report_columns:
+    if "reporter_telegram_user_id" in report_columns:
         reporter_column = "reporter_telegram_user_id"
+    elif "reporter_telegram_id" in report_columns:
+        reporter_column = "reporter_telegram_id"
+
+    if reporter_id and reporter_column:
+        duplicate = cursor.execute(
+            f"SELECT 1 FROM reports WHERE listing_id = ? AND {reporter_column} = ?",
+            (listing_id, reporter_id),
+        ).fetchone()
+        if duplicate:
+            conn.close()
+            return {"message": "Shikoyat allaqachon qabul qilingan"}
 
     if reporter_column:
         cursor.execute(
@@ -210,43 +273,25 @@ async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
         )
     else:
         cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
-    # 2. Увеличиваем счетчик
+
     cursor.execute("UPDATE listings SET report_count = report_count + 1 WHERE id = ?", (listing_id,))
-    # 3. Проверяем лимит
     cursor.execute("SELECT report_count FROM listings WHERE id = ?", (listing_id,))
     count = cursor.fetchone()[0]
     if count >= 3:
         cursor.execute("UPDATE listings SET status = 'hidden_pending_review' WHERE id = ?", (listing_id,))
-        # Получаем владельца объявления для бана
-        cursor.execute("SELECT telegram_user_id FROM listings WHERE id = ?", (listing_id,))
-        owner_row = cursor.fetchone()
-        if owner_row:
-            owner_id = owner_row[0]
-            banned_columns = {row[1] for row in cursor.execute("PRAGMA table_info(banned_users)").fetchall()}
-            if "reason" in banned_columns:
-                cursor.execute(
-                    "INSERT OR IGNORE INTO banned_users (telegram_user_id, reason) VALUES (?, ?)",
-                    (owner_id, f"3+ jalo, oxirgisi: {reason}")
-                )
-            else:
-                cursor.execute(
-                    "INSERT OR IGNORE INTO banned_users (telegram_user_id) VALUES (?)",
-                    (owner_id,)
-                )
-        print(f"Listing {listing_id} hidden. Author {owner_row[0] if owner_row else '?'} banned.")
-        send_admin_notification(f"Объявление {listing_id} скрыто, автор {owner_row[0] if owner_row else '?'} забанен.\nПричина: {reason}")
-    
+        print(f"Listing {listing_id} hidden for admin review after {count} reports.")
+        send_admin_notification(
+            f"E'lon {listing_id} admin tekshiruviga yashirildi.\n"
+            f"Muallif: {owner_row['telegram_user_id']}\n"
+            f"Shikoyatlar: {count}\n"
+            f"Oxirgi sabab: {reason}"
+        )
+
     conn.commit()
     conn.close()
-    return {"message": "Жалоба принята"}
+    return {"message": "Shikoyat qabul qilindi"}
 
-# API (оставляем без изменений)
-# ...
-
-# API (оставляем без изменений)
-# ...
-
-# Статика и маршрутизация
+# Static pages
 @app.get("/")
 async def get_home():
     return FileResponse(os.path.join(FRONTEND_DIR, "landing.html"))
@@ -259,7 +304,7 @@ async def get_map():
 async def get_about():
     return FileResponse(os.path.join(FRONTEND_DIR, "about.html"))
 
-# Монтируем статику с префиксом /static, чтобы не перекрывать корни
+# Mount static files without shadowing root routes.
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 

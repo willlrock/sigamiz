@@ -164,7 +164,7 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
   <div class="wrap">
    <div class="head">
     <h2>Ikki xil e'lon, bitta xarita</h2>
-    <p>Endi platforma faqat “xonadosh qidirish” emas. Kimda uy bor va kim uy qidiryapti - ikkalasi ham aniq ko'rinadi.</p>
+    <p>Endi platforma faqat "xonadosh qidirish" emas. Kimda uy bor va kim uy qidiryapti - ikkalasi ham aniq ko'rinadi.</p>
    </div>
    <div class="paths">
     <article class="path-card featured">
@@ -190,7 +190,7 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
   <div class="wrap">
    <div class="head">
     <h2>So'nggi e'lonlar</h2>
-    <p>API orqali kelayotgan real e'lonlar. Backend ishlamasa, demo ma'lumotlar bilan dizayn ko'rinadi.</p>
+    <p>API orqali kelayotgan real e'lonlar. Faqat faol va tekshirilgan ma'lumotlar ko'rsatiladi.</p>
    </div>
    <div class="filters">
     <button class="chip active" data-type="all" type="button">Hammasi</button>
@@ -252,8 +252,8 @@ function renderListings(){
  }).join("");
 }
 async function loadListings(){
- try{ const res = await fetch("/api/listings"); if(!res.ok) throw new Error("bad"); allListings = await res.json(); if(!Array.isArray(allListings) || !allListings.length) throw new Error("empty"); }
- catch(e){ allListings = DEMO_LISTINGS; }
+ try{ const res = await fetch("/api/listings"); if(!res.ok) throw new Error("bad"); allListings = await res.json(); if(!Array.isArray(allListings)) throw new Error("invalid"); }
+ catch(e){ console.error("Failed to load listings", e); allListings = []; }
  document.getElementById("statListings").textContent = `${allListings.length}+`;
  renderListings();
 }
