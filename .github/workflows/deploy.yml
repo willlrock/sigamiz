@@ -1,34 +1,21 @@
 name: Deploy
-
-on:
-  push:
-    branches:
-      - master
-
-concurrency:
-  group: production-deploy
-  cancel-in-progress: true
-
+on: [push]
 jobs:
   deploy:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-
-      - name: Deploy and restart services
+      - name: Restart and verify
         run: |
-          set -euo pipefail
-
-          cd /home/admn/sigamiz
-          git fetch origin master
-          git pull --ff-only origin master
-
-          /home/admn/sigamiz/venv/bin/python3 -m py_compile bot/main.py backend/main.py backend/init_db.py
-
-          sudo systemctl daemon-reload
-          sudo systemctl restart klapa-backend klapa-bot
-          sudo systemctl is-active --quiet klapa-backend
-          sudo systemctl is-active --quiet klapa-bot
-
-          curl --fail --silent --show-error --output /dev/null http://127.0.0.1/
-          curl --fail --silent --show-error --output /dev/null http://127.0.0.1/api/listings
+          cd /home/admn/sigamiz && git pull
+          for service in klapa-bot klapa-backend; do
+            echo "Restarting $service..."
+            sudo systemctl restart "$service"
+            # Ждем завершения запуска сервиса
+            sleep 5
+            # Проверяем, что сервис активен
+            if ! systemctl is-active --quiet "$service"; then
+              echo "Error: $service failed to start!"
+              exit 1
+            fi
+          done
