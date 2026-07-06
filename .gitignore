@@ -1,12 +1,28 @@
-# Python/venv
+# Python
 __pycache__/
 *.py[cod]
-venv/
+*.pyo
+
+# Virtual environments
 .venv/
+venv/
 env/
 
-# Data & Config
-backend/database.db
+# Runtime data and secrets
 .env
+backend/database.db
 uploads/
+state_storage.pkl
+
+# Local IDE/system files
+.idea/
 .DS_Store
+
+# Agent/local workspace files
+AGENTS.md
+IDENTITY.md
+TOOLS.md
+USER.md
+memory/
+openclaw-workspace-state.json
+skills/

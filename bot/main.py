@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
@@ -57,6 +58,12 @@ def is_banned(user_id):
     conn.close()
     return res is not None
 
+def is_admin_chat(message):
+    if not ADMIN_CHAT_ID:
+        return False
+    allowed_ids = {item.strip() for item in ADMIN_CHAT_ID.split(",") if item.strip()}
+    return str(message.chat.id) in allowed_ids
+
 def has_active_listing(user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -77,6 +84,63 @@ def get_listing_photo_column(cursor):
     return "file_path"
 
 DISTRICTS = ["Mirzo-Ulug'bek", "Yunusobod", "Mirobod", "Chilonzor", "Yakkasaroy", "Shayxontohur", "Uchtepa", "Sergeli", "Yashnobod", "Bektemir", "Olmazor"]
+
+@bot.message_handler(commands=['review'])
+def review_listing(message):
+    if not is_admin_chat(message):
+        bot.reply_to(message, "Bu buyruq faqat admin chat uchun.")
+        return
+
+    parts = (message.text or "").split()
+    if len(parts) != 3 or parts[2] not in {"approve", "ban"}:
+        bot.reply_to(message, "Format: /review <listing_id> approve|ban")
+        return
+
+    try:
+        listing_id = int(parts[1])
+    except ValueError:
+        bot.reply_to(message, "Listing ID raqam bo'lishi kerak.")
+        return
+
+    action = parts[2]
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    listing = cursor.execute(
+        "SELECT id, telegram_user_id, status FROM listings WHERE id = ?",
+        (listing_id,),
+    ).fetchone()
+
+    if not listing:
+        conn.close()
+        bot.reply_to(message, f"E'lon {listing_id} topilmadi.")
+        return
+
+    if action == "approve":
+        cursor.execute(
+            "UPDATE listings SET status = 'active', report_count = 0 WHERE id = ?",
+            (listing_id,),
+        )
+        response = f"E'lon {listing_id} yana active holatiga qaytarildi."
+    else:
+        owner_id = listing["telegram_user_id"]
+        cursor.execute("UPDATE listings SET status = 'removed' WHERE id = ?", (listing_id,))
+        banned_columns = {row[1] for row in cursor.execute("PRAGMA table_info(banned_users)").fetchall()}
+        if "reason" in banned_columns:
+            cursor.execute(
+                "INSERT OR REPLACE INTO banned_users (telegram_user_id, reason) VALUES (?, ?)",
+                (owner_id, f"Admin review ban for listing {listing_id}"),
+            )
+        else:
+            cursor.execute(
+                "INSERT OR IGNORE INTO banned_users (telegram_user_id) VALUES (?)",
+                (owner_id,),
+            )
+        response = f"E'lon {listing_id} removed qilindi, muallif {owner_id} ban qilindi."
+
+    conn.commit()
+    conn.close()
+    bot.reply_to(message, response)
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):

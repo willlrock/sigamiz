@@ -284,7 +284,9 @@ async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
             f"E'lon {listing_id} admin tekshiruviga yashirildi.\n"
             f"Muallif: {owner_row['telegram_user_id']}\n"
             f"Shikoyatlar: {count}\n"
-            f"Oxirgi sabab: {reason}"
+            f"Oxirgi sabab: {reason}\n\n"
+            f"Tasdiqlash: /review {listing_id} approve\n"
+            f"Ban qilish: /review {listing_id} ban"
         )
 
     conn.commit()
