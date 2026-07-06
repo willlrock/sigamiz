@@ -4,6 +4,7 @@ import telebot
 import io
 import traceback
 import math
+import random
 from PIL import Image
 from telebot import types
 from telebot.handler_backends import State, StatesGroup
@@ -16,6 +17,21 @@ TOKEN = os.getenv("BOT_TOKEN")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+
+state_storage = StatePickleStorage(file_path=os.path.join(BASE_DIR, "state_storage.pkl"))
+bot = telebot.TeleBot(TOKEN, state_storage=state_storage, use_class_middlewares=True)
+
+bot.add_custom_filter(StateFilter(bot))
+bot.add_custom_filter(IsDigitFilter())
+
+class AddListingStates(StatesGroup):
+    location = State()
+    university = State()
+    price = State()
+    roommates_needed = State()
+    amenities = State()
+    photos = State()
+    confirm = State()
 
 def blur_location(lat, lng):
     # Расстояние: 150-200 метров (в градусах lat/lng 1 градус ~ 111 км, 1 м ~ 0.000009 градусов)
@@ -147,14 +163,14 @@ def confirm_listing(message):
 @bot.callback_query_handler(state=AddListingStates.confirm, func=lambda call: call.data.startswith("confirm_"))
 def handle_confirm(call):
     if call.data == "confirm_yes":
-        save_listing_to_db(call.from_user.id, call.message.chat.id)
+        save_listing_to_db(call.from_user.id, call.message.chat.id, call.from_user.username)
         bot.edit_message_text("Listing created successfully!", call.message.chat.id, call.message.message_id)
         bot.delete_state(call.from_user.id, call.message.chat.id)
     else:
         bot.edit_message_text("Listing creation cancelled.", call.message.chat.id, call.message.message_id)
         bot.delete_state(call.from_user.id, call.message.chat.id)
 
-def save_listing_to_db(user_id, chat_id):
+def save_listing_to_db(user_id, chat_id, username=None):
     with bot.retrieve_data(user_id, chat_id) as data:
         amenities = data.get('amenities', [])
         has_wifi = 1 if "Wi-Fi" in amenities else 0
@@ -173,7 +189,7 @@ def save_listing_to_db(user_id, chat_id):
             INSERT INTO listings (telegram_user_id, telegram_username, university, lat, lng, price_per_person, people_needed, 
                                   has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, expires_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
-        """, (user_id, "none", data.get('university'), data['lat'], data['lng'], 
+        """, (user_id, username or "hidden", data.get('university'), data['lat'], data['lng'], 
               data['price'], needed_int, has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro))
         listing_id = cursor.lastrowid
         
@@ -221,7 +237,8 @@ def my_listings(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(('del_', 'ext_')))
 def handle_manage_listing(call):
-    action, listing_id = call.data.split('_')
+    action, listing_id_str = call.data.split('_')
+    listing_id = int(listing_id_str)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT telegram_user_id FROM listings WHERE id = ?", (listing_id,))

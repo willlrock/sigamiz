@@ -42,11 +42,13 @@ def init_db():
         
     # Засеиваем тестовыми данными, если пусто
     if cursor.execute("SELECT count(*) FROM listings").fetchone()[0] == 0:
-        expires_at = datetime.now() + timedelta(days=7)
-        cursor.execute("""
-            INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, has_wifi, has_ac, status, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (371445197, "Tameweezer", 41.2995, 69.2401, 1500000, 1, 1, 1, 'active', expires_at))
+        seed_demo = os.getenv("SEED_DEMO_DATA", "false").lower() == "true"
+        if seed_demo:
+            expires_at = datetime.now() + timedelta(days=7)
+            cursor.execute("""
+                INSERT INTO listings (telegram_user_id, telegram_username, lat, lng, price_per_person, people_needed, has_wifi, has_ac, status, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (000000000, "demo_user", 41.2995, 69.2401, 1500000, 1, 1, 1, 'active', expires_at))
     conn.commit()
     conn.close()
 
@@ -82,24 +84,26 @@ def get_listings():
     
     results = []
     for row in listings:
-        results.append({
-            "id": row["id"],
-            "lat": row["lat"],
-            "lng": row["lng"],
-            "price": row["price_per_person"],
-            "people_needed": row["people_needed"],
-            "has_wifi": row["has_wifi"],
-            "has_ac": row["has_ac"],
-            "has_washing_machine": row["has_washing_machine"],
-            "no_landlord_in_yard": row["no_landlord_in_yard"],
-            "near_metro": row["near_metro"],
-            "status": row["status"]
-        })
+    results.append({
+        "id": row["id"],
+        "university": row["university"],
+        "lat": row["lat"],
+        "lng": row["lng"],
+        "price": row["price_per_person"],
+        "people_needed": row["people_needed"],
+        "has_wifi": row["has_wifi"],
+        "has_ac": row["has_ac"],
+        "has_washing_machine": row["has_washing_machine"],
+        "no_landlord_in_yard": row["no_landlord_in_yard"],
+        "near_metro": row["near_metro"],
+        "status": row["status"]
+    })
     conn.close()
     return results
 
 @app.get("/api/listings/{listing_id}")
 def get_listing_detail(listing_id: int):
+    # TODO: Add rate-limiting here (e.g., using slowapi) to prevent contact scraping
     conn = get_db()
     cursor = conn.cursor()
     listing = cursor.execute("SELECT * FROM listings WHERE id = ?", (listing_id,)).fetchone()

@@ -1,8 +1,9 @@
 import sqlite3
 import os
 
-db_path = "database.db"
-schema_path = "schema.sql"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, "database.db")
+schema_path = os.path.join(BASE_DIR, "schema.sql")
 
 def init_db():
     if os.path.exists(db_path):
