@@ -1,8 +1,6 @@
 import os
-import random
 import sqlite3
 import telebot
-import requests
 import io
 import traceback
 import math
@@ -18,25 +16,6 @@ TOKEN = os.getenv("BOT_TOKEN")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
-
-STATE_FILE = os.path.join(BASE_DIR, "backend", "states.pkl")
-storage = StatePickleStorage(file_path=STATE_FILE)
-bot = telebot.TeleBot(TOKEN, state_storage=storage)
-
-bot.add_custom_filter(StateFilter(bot))
-bot.add_custom_filter(IsDigitFilter())
-
-class AddListingStates(StatesGroup):
-    location = State()
-    university = State()
-    price = State()
-    roommates_needed = State()
-    amenities = State()
-    photos = State()
-    confirm = State()
-
-import math
-import random
 
 def blur_location(lat, lng):
     # Расстояние: 150-200 метров (в градусах lat/lng 1 градус ~ 111 км, 1 м ~ 0.000009 градусов)
@@ -186,12 +165,16 @@ def save_listing_to_db(user_id, chat_id):
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+        
+        needed_val = data.get('needed')
+        needed_int = 3 if needed_val == '3' else int(needed_val)
+        
         cursor.execute("""
             INSERT INTO listings (telegram_user_id, telegram_username, university, lat, lng, price_per_person, people_needed, 
                                   has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, expires_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
         """, (user_id, "none", data.get('university'), data['lat'], data['lng'], 
-              data['price'], data['needed'], has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro))
+              data['price'], needed_int, has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro))
         listing_id = cursor.lastrowid
         
         os.makedirs(f"{UPLOAD_DIR}/{listing_id}", exist_ok=True)
@@ -240,6 +223,15 @@ def my_listings(message):
 def handle_manage_listing(call):
     action, listing_id = call.data.split('_')
     conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT telegram_user_id FROM listings WHERE id = ?", (listing_id,))
+    row = cursor.fetchone()
+    
+    if not row or row[0] != call.from_user.id:
+        bot.answer_callback_query(call.id, "Bu sizning e'loningiz emas.")
+        conn.close()
+        return
+
     if action == 'del':
         conn.execute("UPDATE listings SET status = 'removed' WHERE id = ?", (listing_id,))
         bot.answer_callback_query(call.id, "Removed.")

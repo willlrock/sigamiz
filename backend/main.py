@@ -134,8 +134,17 @@ async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
     count = cursor.fetchone()[0]
     if count >= 3:
         cursor.execute("UPDATE listings SET status = 'hidden_pending_review' WHERE id = ?", (listing_id,))
-        print(f"Listing {listing_id} hidden due to reports.")
-        send_admin_notification(f"Объявление {listing_id} скрыто из-за 3 жалоб.\nПричина последней: {reason}")
+        # Получаем владельца объявления для бана
+        cursor.execute("SELECT telegram_user_id FROM listings WHERE id = ?", (listing_id,))
+        owner_row = cursor.fetchone()
+        if owner_row:
+            owner_id = owner_row[0]
+            cursor.execute(
+                "INSERT OR IGNORE INTO banned_users (telegram_user_id, reason) VALUES (?, ?)",
+                (owner_id, f"3+ jalo, oxirgisi: {reason}")
+            )
+        print(f"Listing {listing_id} hidden. Author {owner_row[0] if owner_row else '?'} banned.")
+        send_admin_notification(f"Объявление {listing_id} скрыто, автор {owner_row[0] if owner_row else '?'} забанен.\nПричина: {reason}")
     
     conn.commit()
     conn.close()
