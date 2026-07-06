@@ -1,9 +1,12 @@
 import io
+import json
 import math
 import os
 import random
 import sqlite3
+import threading
 import traceback
+from contextlib import contextmanager
 
 import requests
 import telebot
@@ -23,6 +26,7 @@ SITE_URL = os.getenv("SITE_URL", "https://klapa.net").rstrip("/")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+SESSION_PATH = os.path.join(BASE_DIR, "bot_sessions.json")
 
 state_storage = StatePickleStorage(file_path=os.path.join(BASE_DIR, "state_storage.pkl"))
 bot = telebot.TeleBot(TOKEN, state_storage=state_storage, use_class_middlewares=True)
@@ -114,6 +118,52 @@ AMENITIES = [
 AMENITY_LABELS = {key: label for key, label, _ in AMENITIES}
 AMENITY_COLUMNS = {key: column for key, _, column in AMENITIES}
 MAX_INLINE_RESULTS = 8
+session_lock = threading.Lock()
+
+
+def session_key(user_id, chat_id):
+    return f"{chat_id}:{user_id}"
+
+
+def load_sessions_unlocked():
+    if not os.path.exists(SESSION_PATH):
+        return {}
+    try:
+        with open(SESSION_PATH, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def save_sessions_unlocked(sessions):
+    tmp_path = f"{SESSION_PATH}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as file:
+        json.dump(sessions, file, ensure_ascii=False)
+    os.replace(tmp_path, SESSION_PATH)
+
+
+@contextmanager
+def draft_data(user_id, chat_id):
+    key = session_key(user_id, chat_id)
+    with session_lock:
+        sessions = load_sessions_unlocked()
+        data = dict(sessions.get(key, {}))
+    try:
+        yield data
+    finally:
+        with session_lock:
+            sessions = load_sessions_unlocked()
+            sessions[key] = data
+            save_sessions_unlocked(sessions)
+
+
+def clear_draft(user_id, chat_id):
+    key = session_key(user_id, chat_id)
+    with session_lock:
+        sessions = load_sessions_unlocked()
+        if key in sessions:
+            sessions.pop(key, None)
+            save_sessions_unlocked(sessions)
 
 
 def main_menu_markup():
@@ -262,6 +312,7 @@ def districts_markup(prefix="dist"):
 
 def cancel_flow(user_id, chat_id, text="Bekor qilindi."):
     bot.delete_state(user_id, chat_id)
+    clear_draft(user_id, chat_id)
     bot.send_message(chat_id, text, reply_markup=main_menu_markup())
 
 
@@ -374,6 +425,7 @@ def handle_rules_confirm(call):
     if call.data == "rules_cancel":
         bot.edit_message_text("Bekor qilindi.", call.message.chat.id, call.message.message_id)
         bot.delete_state(call.from_user.id, call.message.chat.id)
+        clear_draft(call.from_user.id, call.message.chat.id)
         return
 
     bot.edit_message_text("Qoidalar qabul qilindi.", call.message.chat.id, call.message.message_id)
@@ -393,7 +445,7 @@ def handle_gender_author(call):
         bot.answer_callback_query(call.id, "Noto'g'ri tanlov")
         return
     bot.set_state(call.from_user.id, AddListingStates.location, call.message.chat.id)
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data.clear()
         data["listing_type"] = "offer"
         data["author_gender"] = gender
@@ -409,7 +461,7 @@ def handle_gender_author(call):
 def handle_location(message):
     try:
         detected_district = detect_district(message.location.latitude, message.location.longitude)
-        with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        with draft_data(message.from_user.id, message.chat.id) as data:
             data.setdefault("listing_type", "offer")
             data.setdefault("author_gender", None)
             data["district"] = detected_district
@@ -441,7 +493,7 @@ def handle_location_text(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("uni_"))
 def handle_university(call):
     uni = call.data.split("_", 1)[1]
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["university"] = uni
         data["flow_step"] = "housing_type"
     bot.answer_callback_query(call.id)
@@ -454,7 +506,7 @@ def handle_university(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("dist_"))
 def handle_district(call):
     district = call.data.split("_", 1)[1]
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["district"] = district
         data["flow_step"] = "housing_type"
     bot.answer_callback_query(call.id)
@@ -468,7 +520,7 @@ def handle_district(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("house_"))
 def handle_housing_type(call):
     h_type = call.data.split("_", 1)[1]
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["housing_type"] = h_type
         data["flow_step"] = "room_count"
     bot.answer_callback_query(call.id)
@@ -483,7 +535,7 @@ def handle_room_count(message):
     if room_count < 1 or room_count > 10:
         bot.reply_to(message, "Xona soni 1 dan 10 gacha bo'lishi kerak.")
         return
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    with draft_data(message.from_user.id, message.chat.id) as data:
         data["room_count"] = room_count
         data["flow_step"] = "price"
     bot.send_message(message.chat.id, "Bir kishi uchun oylik narxni yozing (so'mda). Masalan: 900000")
@@ -501,7 +553,7 @@ def handle_price(message):
     if price < 100_000 or price > 20_000_000:
         bot.reply_to(message, "Narx 100 000 dan 20 000 000 so'mgacha bo'lishi kerak.")
         return
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    with draft_data(message.from_user.id, message.chat.id) as data:
         data["price"] = price
         data["flow_step"] = "roommates_needed"
 
@@ -523,7 +575,7 @@ def handle_price_invalid(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("room_"))
 def handle_roommates(call):
     needed = call.data.split("_", 1)[1]
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["needed"] = needed
         data["flow_step"] = "preferred_gender"
     markup = types.InlineKeyboardMarkup(row_width=3)
@@ -543,7 +595,7 @@ def handle_preferred_gender(call):
     if pref not in {"male", "female", "any"}:
         bot.answer_callback_query(call.id, "Noto'g'ri tanlov")
         return
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["preferred_gender"] = pref
         data["amenities"] = []
         data["flow_step"] = "amenities"
@@ -555,7 +607,7 @@ def handle_preferred_gender(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("amenity_"))
 def handle_amenities(call):
     value = call.data.split("_", 1)[1]
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         if value == "done":
             bot.answer_callback_query(call.id)
             labels = [AMENITY_LABELS.get(key, key) for key in data.get("amenities", [])]
@@ -582,7 +634,7 @@ def handle_amenities(call):
 @bot.message_handler(state=AddListingStates.description, content_types=["text"])
 def handle_description(message):
     text = (message.text or "").strip()
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    with draft_data(message.from_user.id, message.chat.id) as data:
         data["description"] = None if text.lower() == "/skip" else text[:1000]
         data["flow_step"] = "phone_visibility"
 
@@ -599,7 +651,7 @@ def handle_description(message):
 def handle_phone_visibility(call):
     bot.answer_callback_query(call.id)
     if call.data == "phone_no":
-        with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        with draft_data(call.from_user.id, call.message.chat.id) as data:
             data["phone"] = None
             data["photos"] = []
             data["flow_step"] = "photos"
@@ -608,7 +660,7 @@ def handle_phone_visibility(call):
         bot.set_state(call.from_user.id, AddListingStates.photos, call.message.chat.id)
         return
 
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["flow_step"] = "phone"
     bot.edit_message_text("Telefon raqamingizni yuboring:", call.message.chat.id, call.message.message_id)
     bot.set_state(call.from_user.id, AddListingStates.phone, call.message.chat.id)
@@ -618,7 +670,7 @@ def handle_phone_visibility(call):
 def handle_phone(message):
     text = (message.text or "").strip()
     if text.lower() == "/skip":
-        with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        with draft_data(message.from_user.id, message.chat.id) as data:
             data["phone"] = None
             data["photos"] = []
             data["flow_step"] = "photos"
@@ -628,7 +680,7 @@ def handle_phone(message):
     if len(text) < 5:
         bot.reply_to(message, "Telefon raqam juda qisqa. Masalan: +998901234567")
         return
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    with draft_data(message.from_user.id, message.chat.id) as data:
         data["phone"] = text[:40]
         data["photos"] = []
         data["flow_step"] = "photos"
@@ -638,7 +690,7 @@ def handle_phone(message):
 
 @bot.message_handler(state=AddListingStates.photos, content_types=["photo"])
 def handle_photos(message):
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    with draft_data(message.from_user.id, message.chat.id) as data:
         photos = data.setdefault("photos", [])
         if len(photos) < 5:
             file_id = message.photo[-1].file_id
@@ -648,27 +700,61 @@ def handle_photos(message):
             bot.reply_to(message, "5 ta rasm limiti to'ldi. Tugatish uchun /done yuboring.")
 
 
+REQUIRED_LISTING_FIELDS = {
+    "author_gender": "jins",
+    "district": "tuman",
+    "lat": "lokatsiya",
+    "lng": "lokatsiya",
+    "university": "universitet",
+    "housing_type": "uy turi",
+    "room_count": "xona soni",
+    "price": "narx",
+    "needed": "xonadosh soni",
+    "preferred_gender": "xonadosh jinsi",
+}
+
+
+def missing_listing_fields(data):
+    missing = []
+    for key, label in REQUIRED_LISTING_FIELDS.items():
+        if data.get(key) in (None, "", []):
+            missing.append(label)
+    return sorted(set(missing))
+
+
 @bot.message_handler(state=AddListingStates.photos, content_types=["text"], func=lambda message: (message.text or "").strip().lower() == "/done")
 def confirm_listing(message):
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    missing = []
+    with draft_data(message.from_user.id, message.chat.id) as data:
         data["flow_step"] = "confirm"
-        amenities = [AMENITY_LABELS.get(key, key) for key in data.get("amenities", [])]
-        phone_status = "ko'rsatiladi" if data.get("phone") else "faqat Telegram"
-        summary = (
-            "📌 E'lonni tekshiring:\n\n"
-            f"🏠 Uy turi: {data.get('housing_type') or '-'}\n"
-            f"📍 Tuman: {data.get('district') or '-'}\n"
-            f"🎓 Universitet: {data.get('university') or '-'}\n"
-            f"🚪 Xonalar: {data.get('room_count') or '-'}\n"
-            f"💰 Narx: {format_price(data.get('price'))} so'm/kishi\n"
-            f"👥 Kerak: {data.get('needed') or '-'} kishi\n"
-            f"🧑 Siz: {gender_label(data.get('author_gender'))}\n"
-            f"🤝 Xonadosh: {gender_label(data.get('preferred_gender'))}\n"
-            f"☎️ Telefon: {phone_status}\n"
-            f"✨ Qulayliklar: {', '.join(amenities) if amenities else '-'}\n"
-            f"📝 Tavsif: {data.get('description') or '-'}\n"
-            f"🖼 Rasmlar: {len(data.get('photos', []))}"
+        missing = missing_listing_fields(data)
+        if not missing:
+            amenities = [AMENITY_LABELS.get(key, key) for key in data.get("amenities", [])]
+            phone_status = "ko'rsatiladi" if data.get("phone") else "faqat Telegram"
+            summary = (
+                "📌 E'lonni tekshiring:\n\n"
+                f"🏠 Uy turi: {data.get('housing_type') or '-'}\n"
+                f"📍 Tuman: {data.get('district') or '-'}\n"
+                f"🎓 Universitet: {data.get('university') or '-'}\n"
+                f"🚪 Xonalar: {data.get('room_count') or '-'}\n"
+                f"💰 Narx: {format_price(data.get('price'))} so'm/kishi\n"
+                f"👥 Kerak: {data.get('needed') or '-'} kishi\n"
+                f"🧑 Siz: {gender_label(data.get('author_gender'))}\n"
+                f"🤝 Xonadosh: {gender_label(data.get('preferred_gender'))}\n"
+                f"☎️ Telefon: {phone_status}\n"
+                f"✨ Qulayliklar: {', '.join(amenities) if amenities else '-'}\n"
+                f"📝 Tavsif: {data.get('description') or '-'}\n"
+                f"🖼 Rasmlar: {len(data.get('photos', []))}"
+            )
+    if missing:
+        bot.delete_state(message.from_user.id, message.chat.id)
+        clear_draft(message.from_user.id, message.chat.id)
+        bot.send_message(
+            message.chat.id,
+            "E'lon ma'lumotlari to'liq saqlanmadi. Iltimos, /add orqali qayta boshlang.",
+            reply_markup=main_menu_markup(),
         )
+        return
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("✅ Joylashtirish", callback_data="confirm_yes"),
@@ -690,13 +776,18 @@ def handle_confirm(call):
             return
         bot.edit_message_text(f"E'lon joylashtirildi. ID: {listing_id}", call.message.chat.id, call.message.message_id)
         bot.delete_state(call.from_user.id, call.message.chat.id)
+        clear_draft(call.from_user.id, call.message.chat.id)
     else:
         bot.edit_message_text("E'lon yaratish bekor qilindi.", call.message.chat.id, call.message.message_id)
         bot.delete_state(call.from_user.id, call.message.chat.id)
+        clear_draft(call.from_user.id, call.message.chat.id)
 
 
 def save_listing_to_db(user_id, chat_id, username=None):
-    with bot.retrieve_data(user_id, chat_id) as data:
+    with draft_data(user_id, chat_id) as data:
+        missing = missing_listing_fields(data)
+        if missing:
+            raise ValueError(f"Incomplete listing draft: {', '.join(missing)}")
         amenities = data.get("amenities", [])
         amenity_flags = {column: 1 if key in amenities else 0 for key, _, column in AMENITIES}
         needed_val = data.get("needed")
@@ -772,7 +863,7 @@ def handle_type_seek(call):
 @bot.callback_query_handler(func=lambda call: call.data == "seek_in_bot")
 def handle_seek_in_bot(call):
     bot.answer_callback_query(call.id)
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data.clear()
         data["flow_step"] = "search_gender_author"
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -790,7 +881,7 @@ def handle_search_gender(call):
     if gender not in {"male", "female"}:
         bot.answer_callback_query(call.id, "Noto'g'ri tanlov")
         return
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["s_gender"] = gender
         data["flow_step"] = "search_preferred_gender"
     bot.answer_callback_query(call.id)
@@ -810,7 +901,7 @@ def handle_search_preferred_gender(call):
     if pref not in {"male", "female", "any"}:
         bot.answer_callback_query(call.id, "Noto'g'ri tanlov")
         return
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["s_preferred_gender"] = pref
         data["flow_step"] = "search_price_min"
     bot.answer_callback_query(call.id)
@@ -824,7 +915,7 @@ def handle_search_price_min(message):
     if error:
         bot.reply_to(message, error)
         return
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    with draft_data(message.from_user.id, message.chat.id) as data:
         data["s_price_min"] = value
         data["flow_step"] = "search_price_max"
     bot.send_message(message.chat.id, "Maksimal narxni yozing yoki /skip yuboring:")
@@ -837,7 +928,7 @@ def handle_search_price_max(message):
     if error:
         bot.reply_to(message, error)
         return
-    with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+    with draft_data(message.from_user.id, message.chat.id) as data:
         price_min = data.get("s_price_min")
         if price_min is not None and value is not None and value < price_min:
             bot.reply_to(message, "Maksimal narx minimal narxdan kichik bo'lmasligi kerak.")
@@ -856,7 +947,7 @@ def handle_search_price_max(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("samenity_"))
 def handle_search_amenities(call):
     value = call.data.split("_", 1)[1]
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         if value == "done":
             bot.answer_callback_query(call.id)
             markup = types.InlineKeyboardMarkup(row_width=1)
@@ -885,14 +976,14 @@ def handle_search_amenities(call):
 def handle_search_location_choice(call):
     bot.answer_callback_query(call.id)
     if call.data == "sloc_all":
-        with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+        with draft_data(call.from_user.id, call.message.chat.id) as data:
             data["s_district"] = None
             data["flow_step"] = "search_results"
         bot.edit_message_text("Butun Toshkent bo'yicha qidirilmoqda...", call.message.chat.id, call.message.message_id)
         run_search_and_reply(call.from_user.id, call.message.chat.id)
         return
     bot.edit_message_text("Tumanni tanlang:", call.message.chat.id, call.message.message_id, reply_markup=districts_markup("sdist"))
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["flow_step"] = "search_district"
     bot.set_state(call.from_user.id, SearchStates.district, call.message.chat.id)
 
@@ -900,7 +991,7 @@ def handle_search_location_choice(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("sdist_"))
 def handle_search_district(call):
     district = call.data.split("_", 1)[1]
-    with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
+    with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["s_district"] = district
         data["flow_step"] = "search_results"
     bot.answer_callback_query(call.id)
@@ -909,7 +1000,7 @@ def handle_search_district(call):
 
 
 def run_search_and_reply(user_id, chat_id):
-    with bot.retrieve_data(user_id, chat_id) as data:
+    with draft_data(user_id, chat_id) as data:
         seeker_gender = data.get("s_gender")
         desired_gender = data.get("s_preferred_gender")
         price_min = data.get("s_price_min")
@@ -951,6 +1042,7 @@ def run_search_and_reply(user_id, chat_id):
         markup.add(types.InlineKeyboardButton("🗺 Xaritada ko'rish", url=f"{SITE_URL}/xarita?listing_type=offer"))
         bot.send_message(chat_id, "Hozircha mos e'lon topilmadi. Filtrlarni o'zgartirib ko'ring yoki xaritani oching.", reply_markup=markup)
         bot.delete_state(user_id, chat_id)
+        clear_draft(user_id, chat_id)
         return
 
     if len(results) > MAX_INLINE_RESULTS:
@@ -958,6 +1050,7 @@ def run_search_and_reply(user_id, chat_id):
         markup.add(types.InlineKeyboardButton("🗺 Xaritada ko'rish", url=f"{SITE_URL}/xarita?listing_type=offer"))
         bot.send_message(chat_id, f"{len(results)} ta e'lon topildi. Xaritada ko'rish qulayroq:", reply_markup=markup)
         bot.delete_state(user_id, chat_id)
+        clear_draft(user_id, chat_id)
         return
 
     bot.send_message(chat_id, f"{len(results)} ta mos e'lon topildi:")
@@ -978,6 +1071,7 @@ def run_search_and_reply(user_id, chat_id):
         bot.send_message(chat_id, text, reply_markup=markup)
 
     bot.delete_state(user_id, chat_id)
+    clear_draft(user_id, chat_id)
 
 
 @bot.message_handler(commands=["my"])
@@ -1040,7 +1134,7 @@ def handle_manage_listing(call):
 
 
 def current_flow_step(user_id, chat_id):
-    with bot.retrieve_data(user_id, chat_id) as data:
+    with draft_data(user_id, chat_id) as data:
         step = data.get("flow_step")
     if step:
         return step

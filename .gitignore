@@ -13,6 +13,7 @@ env/
 backend/database.db
 uploads/
 state_storage.pkl
+bot_sessions.json
 
 # Local IDE/system files
 .idea/
