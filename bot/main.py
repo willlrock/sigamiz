@@ -5,6 +5,7 @@ import random
 import sqlite3
 import traceback
 
+import requests
 import telebot
 from dotenv import load_dotenv
 from PIL import Image
@@ -64,6 +65,43 @@ DISTRICTS = [
     "Shayxontohur", "Uchtepa", "Sergeli", "Yashnobod", "Bektemir", "Olmazor"
 ]
 
+DISTRICT_CENTERS = {
+    "Mirzo-Ulug'bek": (41.3250, 69.3340),
+    "Yunusobod": (41.3650, 69.2850),
+    "Mirobod": (41.2960, 69.2900),
+    "Chilonzor": (41.2850, 69.2030),
+    "Yakkasaroy": (41.2850, 69.2550),
+    "Shayxontohur": (41.3260, 69.2420),
+    "Uchtepa": (41.3030, 69.1660),
+    "Sergeli": (41.2260, 69.2200),
+    "Yashnobod": (41.2960, 69.3700),
+    "Bektemir": (41.2070, 69.3340),
+    "Olmazor": (41.3450, 69.2050),
+}
+
+DISTRICT_ALIASES = {
+    "mirzo ulugbek": "Mirzo-Ulug'bek",
+    "mirzo-ulugbek": "Mirzo-Ulug'bek",
+    "mirzo ulug'bek": "Mirzo-Ulug'bek",
+    "yunusobod": "Yunusobod",
+    "yunusabad": "Yunusobod",
+    "mirobod": "Mirobod",
+    "mirabad": "Mirobod",
+    "chilonzor": "Chilonzor",
+    "chilanzar": "Chilonzor",
+    "yakkasaroy": "Yakkasaroy",
+    "yakkasaray": "Yakkasaroy",
+    "shayxontohur": "Shayxontohur",
+    "shayhantaur": "Shayxontohur",
+    "uchtepa": "Uchtepa",
+    "sergeli": "Sergeli",
+    "yashnobod": "Yashnobod",
+    "yashnabad": "Yashnobod",
+    "bektemir": "Bektemir",
+    "olmazor": "Olmazor",
+    "almazar": "Olmazor",
+}
+
 UNIVERSITIES = ["TATU", "WIUT", "INHA", "O'zMU", "TMI", "TDIU", "TSUULL", "TTA", "Other"]
 HOUSING_TYPES = ["Kvartira", "Xonadonli uy", "Yotoqxona", "Boshqa"]
 AMENITIES = [
@@ -121,6 +159,54 @@ def blur_location(lat, lng):
     radius = random.uniform(0.00135, 0.0018)
     angle = random.uniform(0, 2 * math.pi)
     return lat + radius * math.cos(angle), lng + radius * math.sin(angle)
+
+
+def normalize_district_name(value):
+    if not value:
+        return None
+    cleaned = str(value).lower()
+    for suffix in ["district", "tumani", "район", "тумани", "tuman"]:
+        cleaned = cleaned.replace(suffix, "")
+    cleaned = cleaned.replace("ʻ", "'").replace("’", "'").replace("`", "'")
+    cleaned = " ".join(cleaned.replace("-", " ").split())
+    for key, district in DISTRICT_ALIASES.items():
+        normalized_key = " ".join(key.replace("-", " ").split())
+        if normalized_key in cleaned:
+            return district
+    return None
+
+
+def nearest_district(lat, lng):
+    def distance_sq(center):
+        center_lat, center_lng = center
+        return (lat - center_lat) ** 2 + (lng - center_lng) ** 2
+
+    return min(DISTRICT_CENTERS.items(), key=lambda item: distance_sq(item[1]))[0]
+
+
+def detect_district(lat, lng):
+    try:
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={
+                "format": "jsonv2",
+                "lat": lat,
+                "lon": lng,
+                "accept-language": "uz,en,ru",
+                "zoom": 13,
+            },
+            headers={"User-Agent": "sigamiz-bot/1.0"},
+            timeout=4,
+        )
+        response.raise_for_status()
+        address = response.json().get("address", {})
+        for key in ("city_district", "suburb", "borough", "county", "municipality"):
+            district = normalize_district_name(address.get(key))
+            if district:
+                return district
+    except Exception:
+        pass
+    return nearest_district(lat, lng)
 
 
 def is_banned(user_id):
@@ -321,13 +407,19 @@ def handle_gender_author(call):
 @bot.message_handler(content_types=["location"])
 def handle_location(message):
     try:
+        detected_district = detect_district(message.location.latitude, message.location.longitude)
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data.setdefault("listing_type", "offer")
             data.setdefault("author_gender", None)
+            data["district"] = detected_district
             data["lat"], data["lng"] = blur_location(message.location.latitude, message.location.longitude)
 
         buttons = [types.InlineKeyboardButton(uni, callback_data=f"uni_{uni}") for uni in UNIVERSITIES]
-        bot.send_message(message.chat.id, "Lokatsiya saqlandi.", reply_markup=types.ReplyKeyboardRemove())
+        bot.send_message(
+            message.chat.id,
+            f"Lokatsiya saqlandi. Tuman: {detected_district}.",
+            reply_markup=types.ReplyKeyboardRemove(),
+        )
         bot.send_message(
             message.chat.id,
             "Universitetni tanlang:",
@@ -351,8 +443,9 @@ def handle_university(call):
         data["university"] = uni
     bot.answer_callback_query(call.id)
     bot.edit_message_text(f"Universitet: {uni}", call.message.chat.id, call.message.message_id)
-    bot.send_message(call.message.chat.id, "Tumanni tanlang:", reply_markup=districts_markup("dist"))
-    bot.set_state(call.from_user.id, AddListingStates.district, call.message.chat.id)
+    buttons = [types.InlineKeyboardButton(opt, callback_data=f"house_{opt}") for opt in HOUSING_TYPES]
+    bot.send_message(call.message.chat.id, "Uy turini tanlang:", reply_markup=chunked_markup(buttons, row_width=2))
+    bot.set_state(call.from_user.id, AddListingStates.housing_type, call.message.chat.id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("dist_"))
