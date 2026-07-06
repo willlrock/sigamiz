@@ -306,6 +306,7 @@ def handle_gender_author(call):
     if gender not in {"male", "female"}:
         bot.answer_callback_query(call.id, "Noto'g'ri tanlov")
         return
+    bot.set_state(call.from_user.id, AddListingStates.location, call.message.chat.id)
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data.clear()
         data["listing_type"] = "offer"
@@ -315,16 +316,14 @@ def handle_gender_author(call):
     location_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     location_markup.add(types.KeyboardButton("Lokatsiyani yuborish", request_location=True))
     bot.send_message(call.message.chat.id, "Uy joylashgan taxminiy lokatsiyani yuboring.", reply_markup=location_markup)
-    bot.set_state(call.from_user.id, AddListingStates.location, call.message.chat.id)
 
 
 @bot.message_handler(content_types=["location"])
 def handle_location(message):
     try:
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            if data.get("listing_type") != "offer" or not data.get("author_gender"):
-                bot.reply_to(message, "Lokatsiya qabul qilindi, lekin e'lon jarayoni topilmadi. Iltimos, /add orqali qayta boshlang.")
-                return
+            data.setdefault("listing_type", "offer")
+            data.setdefault("author_gender", None)
             data["lat"], data["lng"] = blur_location(message.location.latitude, message.location.longitude)
 
         buttons = [types.InlineKeyboardButton(uni, callback_data=f"uni_{uni}") for uni in UNIVERSITIES]
