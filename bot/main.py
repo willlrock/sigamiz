@@ -1061,6 +1061,18 @@ def current_flow_step(user_id, chat_id):
     return None
 
 
+@bot.message_handler(content_types=["photo"])
+def route_photo_by_flow_step(message):
+    if current_flow_step(message.from_user.id, message.chat.id) == "photos":
+        handle_photos(message)
+
+
+@bot.message_handler(content_types=["document"])
+def route_document_by_flow_step(message):
+    if current_flow_step(message.from_user.id, message.chat.id) == "photos":
+        bot.reply_to(message, "Iltimos, rasmni fayl emas, Telegram photo sifatida yuboring yoki /done yozing.")
+
+
 @bot.message_handler(content_types=["text"])
 def route_text_by_flow_step(message):
     text = (message.text or "").strip()
