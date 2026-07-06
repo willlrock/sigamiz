@@ -84,6 +84,7 @@ def get_listing_photo_column(cursor):
     return "file_path"
 
 DISTRICTS = ["Mirzo-Ulug'bek", "Yunusobod", "Mirobod", "Chilonzor", "Yakkasaroy", "Shayxontohur", "Uchtepa", "Sergeli", "Yashnobod", "Bektemir", "Olmazor"]
+AMENITY_OPTIONS = ["Wi-Fi", "AC", "Washer", "No Landlord", "Metro"]
 
 @bot.message_handler(commands=['review'])
 def review_listing(message):
@@ -162,11 +163,12 @@ def start_add_flow(message):
     bot.reply_to(message, "Siz e'lon beryapsizmi yoki qidiryapsizmi?", reply_markup=markup)
     bot.set_state(message.from_user.id, AddListingStates.listing_type, message.chat.id)
 
-@bot.callback_query_handler(state=AddListingStates.listing_type, func=lambda call: call.data.startswith("type_"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("type_"))
 def handle_listing_type(call):
     listing_type = call.data.split("_")[1] # "offer" or "seek"
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['listing_type'] = listing_type
+    bot.answer_callback_query(call.id)
     bot.edit_message_text("Tanlandi.", call.message.chat.id, call.message.message_id)
     bot.send_message(call.message.chat.id, "Iltimos, lokatsiyangizni yuboring.")
     bot.set_state(call.from_user.id, AddListingStates.location, call.message.chat.id)
@@ -190,11 +192,12 @@ def handle_location(message):
         print(f"ERROR in handle_location: {traceback.format_exc()}")
         bot.reply_to(message, "An error occurred. Please try again later.")
 
-@bot.callback_query_handler(state=AddListingStates.university, func=lambda call: call.data.startswith("uni_"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("uni_"))
 def handle_university(call):
     uni = call.data.split("_")[1]
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['university'] = uni
+    bot.answer_callback_query(call.id)
     bot.edit_message_text(f"University saved: {uni}", call.message.chat.id, call.message.message_id)
     
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -203,13 +206,14 @@ def handle_university(call):
     bot.send_message(call.message.chat.id, "Iltimos, tumanni tanlang:", reply_markup=markup)
     bot.set_state(call.from_user.id, AddListingStates.district, call.message.chat.id)
 
-@bot.callback_query_handler(state=AddListingStates.district, func=lambda call: call.data.startswith("dist_"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("dist_"))
 def handle_district(call):
     district = call.data.split("_", 1)[1]
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['district'] = district
         listing_type = data.get('listing_type')
         
+    bot.answer_callback_query(call.id)
     bot.edit_message_text(f"Tuman: {district}", call.message.chat.id, call.message.message_id)
     
     if listing_type == 'offer':
@@ -241,7 +245,7 @@ def handle_price(message):
     bot.send_message(message.chat.id, "Nechta xonadosh kerak?", reply_markup=markup)
     bot.set_state(message.from_user.id, AddListingStates.roommates_needed, message.chat.id)
 
-@bot.callback_query_handler(state=AddListingStates.roommates_needed, func=lambda call: call.data.startswith("room_"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("room_"))
 def handle_roommates(call):
     needed = call.data.split("_")[1]
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
@@ -249,18 +253,19 @@ def handle_roommates(call):
         data['amenities'] = []
     
     markup = types.InlineKeyboardMarkup(row_width=2)
-    options = ["Wi-Fi", "AC", "Washer", "No Landlord", "Metro"]
-    for opt in options:
+    for opt in AMENITY_OPTIONS:
         markup.add(types.InlineKeyboardButton(opt, callback_data=opt))
     markup.add(types.InlineKeyboardButton("Done", callback_data="done"))
+    bot.answer_callback_query(call.id)
     bot.edit_message_text("Qulayliklarni tanlang:", call.message.chat.id, call.message.message_id, reply_markup=markup)
     bot.set_state(call.from_user.id, AddListingStates.amenities, call.message.chat.id)
 
-@bot.callback_query_handler(state=AddListingStates.housing_type, func=lambda call: call.data.startswith("house_"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("house_"))
 def handle_housing_type(call):
     h_type = call.data.split("_", 1)[1]
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         data['housing_type'] = h_type
+    bot.answer_callback_query(call.id)
     bot.edit_message_text(f"Uy turi: {h_type}", call.message.chat.id, call.message.message_id)
     bot.send_message(call.message.chat.id, "Nechta xona?")
     bot.set_state(call.from_user.id, AddListingStates.room_count, call.message.chat.id)
@@ -276,10 +281,11 @@ def handle_room_count(message):
     bot.send_message(message.chat.id, "Price per person (UZS):")
     bot.set_state(message.from_user.id, AddListingStates.price, message.chat.id)
 
-@bot.callback_query_handler(state=AddListingStates.amenities, func=lambda call: True)
+@bot.callback_query_handler(func=lambda call: call.data in AMENITY_OPTIONS or call.data == "done")
 def handle_amenities(call):
     with bot.retrieve_data(call.from_user.id, call.message.chat.id) as data:
         if call.data == "done":
+            bot.answer_callback_query(call.id)
             bot.edit_message_text("Qulayliklar saqlandi.", call.message.chat.id, call.message.message_id)
             bot.send_message(call.message.chat.id, "Qisqacha tavsif yozing (yoki /skip):")
             bot.set_state(call.from_user.id, AddListingStates.description, call.message.chat.id)
@@ -343,13 +349,15 @@ def confirm_listing(message):
         bot.send_message(message.chat.id, summary, reply_markup=markup)
         bot.set_state(message.from_user.id, AddListingStates.confirm, message.chat.id)
 
-@bot.callback_query_handler(state=AddListingStates.confirm, func=lambda call: call.data.startswith("confirm_"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_"))
 def handle_confirm(call):
     if call.data == "confirm_yes":
         save_listing_to_db(call.from_user.id, call.message.chat.id, call.from_user.username)
+        bot.answer_callback_query(call.id)
         bot.edit_message_text("Listing created successfully!", call.message.chat.id, call.message.message_id)
         bot.delete_state(call.from_user.id, call.message.chat.id)
     else:
+        bot.answer_callback_query(call.id)
         bot.edit_message_text("Listing creation cancelled.", call.message.chat.id, call.message.message_id)
         bot.delete_state(call.from_user.id, call.message.chat.id)
 
