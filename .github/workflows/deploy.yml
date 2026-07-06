@@ -1,11 +1,34 @@
 name: Deploy
-on: [push]
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-      - name: Restart app
+
+      - name: Deploy and restart services
         run: |
-          cd /home/admn/sigamiz && git pull
-          sudo systemctl restart klapa-bot klapa-backend
+          set -euo pipefail
+
+          cd /home/admn/sigamiz
+          git fetch origin master
+          git pull --ff-only origin master
+
+          /home/admn/sigamiz/venv/bin/python3 -m py_compile bot/main.py backend/main.py backend/init_db.py
+
+          sudo systemctl daemon-reload
+          sudo systemctl restart klapa-backend klapa-bot
+          sudo systemctl is-active --quiet klapa-backend
+          sudo systemctl is-active --quiet klapa-bot
+
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1/
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1/api/listings

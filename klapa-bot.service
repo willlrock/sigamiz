@@ -3,7 +3,8 @@ Description=Klapa Bot
 After=network.target
 
 [Service]
-User=root
+User=admn
+Group=admn
 WorkingDirectory=/home/admn/sigamiz
 ExecStart=/home/admn/sigamiz/venv/bin/python3 bot/main.py
 Restart=always

@@ -3,7 +3,8 @@ Description=Klapa Backend
 After=network.target
 
 [Service]
-User=root
+User=admn
+Group=admn
 WorkingDirectory=/home/admn/sigamiz
 ExecStart=/home/admn/sigamiz/venv/bin/python3 backend/main.py
 Restart=always
