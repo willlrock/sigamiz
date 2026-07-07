@@ -369,6 +369,8 @@ function renderMarkers(){
  }
 
  filtered.forEach(item => {
+ const isSeeker = item.listing_type === 'seek';
+ if(isSeeker) return;
  const isReviewing = item.status === 'hidden_pending_review';
  const icon = L.divIcon({
  className: '',

@@ -457,8 +457,29 @@ def handle_gender_author(call):
     bot.send_message(call.message.chat.id, "Uy joylashgan taxminiy lokatsiyani yuboring.", reply_markup=location_markup)
 
 
+def is_add_location_state(current_state):
+    location_name = AddListingStates.location.name
+    return (
+        current_state == AddListingStates.location
+        or getattr(current_state, "name", None) == location_name
+        or str(current_state or "") in {
+            location_name,
+            f"{AddListingStates.__name__}:{location_name}",
+            f"{AddListingStates.__name__}.{location_name}",
+        }
+    )
+
+
 @bot.message_handler(content_types=["location"])
 def handle_location(message):
+    current_state = bot.get_state(message.from_user.id, message.chat.id)
+    if not is_add_location_state(current_state):
+        bot.reply_to(
+            message,
+            "E'lon joylashtirish uchun avval /add buyrug'ini yuboring va \"Opublikovat\" tugmasini bosing.",
+        )
+        return
+
     try:
         detected_district = detect_district(message.location.latitude, message.location.longitude)
         with draft_data(message.from_user.id, message.chat.id) as data:
@@ -662,21 +683,46 @@ def handle_phone_visibility(call):
 
     with draft_data(call.from_user.id, call.message.chat.id) as data:
         data["flow_step"] = "phone"
-    bot.edit_message_text("Telefon raqamingizni yuboring:", call.message.chat.id, call.message.message_id)
+    bot.edit_message_text("Siz telefon raqamingizni ko'rsatishni tanladingiz.", call.message.chat.id, call.message.message_id)
+    contact_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    contact_markup.add(types.KeyboardButton("Kontaktni yuborish", request_contact=True))
+    bot.send_message(
+        call.message.chat.id,
+        "Pastdagi tugma orqali telefon raqamingizni yuboring.",
+        reply_markup=contact_markup,
+    )
     bot.set_state(call.from_user.id, AddListingStates.phone, call.message.chat.id)
+
+
+@bot.message_handler(state=AddListingStates.phone, content_types=["contact"])
+def handle_phone_contact(message):
+    contact = message.contact
+    if contact.user_id and contact.user_id != message.from_user.id:
+        bot.reply_to(message, "Iltimos, faqat o'zingizning kontaktingizni yuboring.")
+        return
+
+    phone = contact.phone_number or ""
+    if len(phone) < 5:
+        bot.reply_to(message, "Telefon raqam juda qisqa. Masalan: +998901234567")
+        return
+    if not phone.startswith("+"):
+        phone = f"+{phone}"
+
+    with draft_data(message.from_user.id, message.chat.id) as data:
+        data["phone"] = phone[:40]
+        data["photos"] = []
+        data["flow_step"] = "photos"
+    bot.send_message(
+        message.chat.id,
+        "Raqam saqlandi. Rasmlarni yuboring (5 tagacha). Tugatgach /done yozing.",
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
+    bot.set_state(message.from_user.id, AddListingStates.photos, message.chat.id)
 
 
 @bot.message_handler(state=AddListingStates.phone, content_types=["text"])
 def handle_phone(message):
     text = (message.text or "").strip()
-    if text.lower() == "/skip":
-        with draft_data(message.from_user.id, message.chat.id) as data:
-            data["phone"] = None
-            data["photos"] = []
-            data["flow_step"] = "photos"
-        bot.send_message(message.chat.id, "Rasmlarni yuboring (5 tagacha). Tugatgach /done yozing.")
-        bot.set_state(message.from_user.id, AddListingStates.photos, message.chat.id)
-        return
     if len(text) < 5:
         bot.reply_to(message, "Telefon raqam juda qisqa. Masalan: +998901234567")
         return
@@ -684,7 +730,11 @@ def handle_phone(message):
         data["phone"] = text[:40]
         data["photos"] = []
         data["flow_step"] = "photos"
-    bot.send_message(message.chat.id, "Rasmlarni yuboring (5 tagacha). Tugatgach /done yozing.")
+    bot.send_message(
+        message.chat.id,
+        "Rasmlarni yuboring (5 tagacha). Tugatgach /done yozing.",
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
     bot.set_state(message.from_user.id, AddListingStates.photos, message.chat.id)
 
 
@@ -1062,12 +1112,12 @@ def run_search_and_reply(user_id, chat_id):
             f"🤝 Xonadosh: {gender_label(row['preferred_gender'])}\n"
             f"📝 {row['description'] or '-'}"
         )
+        if row["phone_number"]:
+            text += f"\n☎️ Tel: {row['phone_number']}"
         markup = types.InlineKeyboardMarkup(row_width=1)
         username = (row["telegram_username"] or "").lstrip("@")
         if username:
             markup.add(types.InlineKeyboardButton("💬 Telegram orqali yozish", url=f"https://t.me/{username}"))
-        if row["phone_number"]:
-            markup.add(types.InlineKeyboardButton("☎️ Telefon qilish", url=f"tel:{row['phone_number']}"))
         bot.send_message(chat_id, text, reply_markup=markup)
 
     bot.delete_state(user_id, chat_id)
