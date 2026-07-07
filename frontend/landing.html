@@ -239,6 +239,13 @@ function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number
 function typeInfo(item){ return item.listing_type === "seek" ? {key:"seek", label:"Qidiryapti"} : {key:"offer", label:"Uy bor"}; }
 function titleFor(item){ return [item.district,item.university].filter(Boolean).join(", ") || "Toshkent"; }
 function matches(item){ if(activeType !== "all" && item.listing_type !== activeType) return false; for(const filter of filters){ if(!item[filter]) return false; } return true; }
+function buildListingsUrl(){
+ const params = new URLSearchParams();
+ if(activeType && activeType !== "all") params.set("listing_type", activeType);
+ filters.forEach(filter => params.set(filter, "true"));
+ const qs = params.toString();
+ return qs ? `/api/listings?${qs}` : "/api/listings";
+}
 function renderListings(){
  const items = allListings.filter(matches).slice(0,6);
  document.getElementById("emptyState").style.display = items.length ? "none" : "block";
@@ -252,13 +259,13 @@ function renderListings(){
  }).join("");
 }
 async function loadListings(){
- try{ const res = await fetch("/api/listings"); if(!res.ok) throw new Error("bad"); allListings = await res.json(); if(!Array.isArray(allListings)) throw new Error("invalid"); }
- catch(e){ console.error("Failed to load listings", e); allListings = []; }
+ try{ const res = await fetch(buildListingsUrl()); if(!res.ok) throw new Error("bad"); allListings = await res.json(); if(!Array.isArray(allListings)) throw new Error("invalid"); }
+ catch(e){ console.error("Failed to load listings", e); allListings = DEMO_LISTINGS; }
  document.getElementById("statListings").textContent = `${allListings.length}+`;
  renderListings();
 }
-document.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => { activeType = button.dataset.type; document.querySelectorAll("[data-type]").forEach(item => item.classList.toggle("active", item === button)); renderListings(); }));
-document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => { const key = button.dataset.filter; filters.has(key) ? filters.delete(key) : filters.add(key); button.classList.toggle("active"); renderListings(); }));
+document.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => { activeType = button.dataset.type; document.querySelectorAll("[data-type]").forEach(item => item.classList.toggle("active", item === button)); loadListings(); }));
+document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => { const key = button.dataset.filter; filters.has(key) ? filters.delete(key) : filters.add(key); button.classList.toggle("active"); loadListings(); }));
 document.getElementById("menuBtn").addEventListener("click", () => document.getElementById("mobileNav").classList.toggle("open"));
 loadListings();
 </script>

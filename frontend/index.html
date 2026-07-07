@@ -334,12 +334,19 @@ let allListings = [];
 let activeFilters = new Set();
 let markers = [];
 
+function buildListingsUrl(){
+ const params = new URLSearchParams();
+ activeFilters.forEach(filter => params.set(filter, 'true'));
+ const qs = params.toString();
+ return qs ? `/api/listings?${qs}` : '/api/listings';
+}
+
 async function loadListings(){
  try {
- const res = await fetch('/api/listings');
+ const res = await fetch(buildListingsUrl());
  if(!res.ok) throw new Error('bad response');
  allListings = await res.json();
- if(!Array.isArray(allListings) || allListings.length === 0) throw new Error('empty');
+ if(!Array.isArray(allListings)) throw new Error('invalid response');
  } catch(e){
  // Fallback so the design can be previewed without a running backend
  allListings = DEMO_LISTINGS;
@@ -389,7 +396,7 @@ document.querySelectorAll('.filters-panel .chip').forEach(chip => {
  const key = chip.dataset.filter;
  if(activeFilters.has(key)){ activeFilters.delete(key); chip.classList.remove('active'); }
  else { activeFilters.add(key); chip.classList.add('active'); }
- renderMarkers();
+ loadListings();
  });
 });
 

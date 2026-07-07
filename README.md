@@ -19,6 +19,7 @@ Create `.env` in the project root:
 ```env
 BOT_TOKEN=your_telegram_bot_token
 ADMIN_CHAT_ID=your_admin_chat_id
+SITE_URL=https://your-domain.example
 SEED_DEMO_DATA=false
 ```
 
@@ -28,14 +29,14 @@ SEED_DEMO_DATA=false
 
 ```bash
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt
-.venv/Scripts/python backend/main.py
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python backend/main.py
 ```
 
 Run the bot in another terminal:
 
 ```bash
-.venv/Scripts/python bot/main.py
+.venv/bin/python bot/main.py
 ```
 
 Open:

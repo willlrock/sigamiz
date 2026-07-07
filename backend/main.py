@@ -175,6 +175,11 @@ def get_listings(
     district: str | None = None,
     university: str | None = None,
     preferred_gender: str | None = None,
+    has_wifi: bool | None = None,
+    has_ac: bool | None = None,
+    has_washing_machine: bool | None = None,
+    no_landlord_in_yard: bool | None = None,
+    near_metro: bool | None = None,
 ):
     conn = get_db()
     cursor = conn.cursor()
@@ -193,6 +198,16 @@ def get_listings(
     if preferred_gender and preferred_gender != "any":
         query += " AND (author_gender = ? OR preferred_gender = ? OR preferred_gender = 'any')"
         params.extend([preferred_gender, preferred_gender])
+    amenity_filters = {
+        "has_wifi": has_wifi,
+        "has_ac": has_ac,
+        "has_washing_machine": has_washing_machine,
+        "no_landlord_in_yard": no_landlord_in_yard,
+        "near_metro": near_metro,
+    }
+    for column, value in amenity_filters.items():
+        if value:
+            query += f" AND {column} = 1"
         
     listings = cursor.execute(query, params).fetchall()
     photos_by_listing = get_listing_photos(cursor, [row["id"] for row in listings])

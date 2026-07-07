@@ -213,6 +213,13 @@ function matches(item){
  if(!query) return true;
  return [item.district,item.university,item.housing_type,item.description,item.telegram_username].filter(Boolean).join(" ").toLowerCase().includes(query);
 }
+function buildListingsUrl(){
+ const params = new URLSearchParams();
+ if(activeType && activeType !== "all") params.set("listing_type", activeType);
+ activeFilters.forEach(filter => params.set(filter, "true"));
+ const qs = params.toString();
+ return qs ? `/api/listings?${qs}` : "/api/listings";
+}
 function photoFor(item){ return item.photos && item.photos.length ? item.photos[0] : ""; }
 function tagsFor(item, limit = 3){
  return Object.keys(amenityLabels).filter(key => item[key]).slice(0, limit).map(key => {
@@ -228,11 +235,11 @@ function initMap(){
 }
 async function loadListings(){
  try{
-  const res = await fetch("/api/listings");
+  const res = await fetch(buildListingsUrl());
   if(!res.ok) throw new Error("Bad response");
   allListings = await res.json();
   if(!Array.isArray(allListings)) throw new Error("Invalid response");
- }catch(e){ console.error("Failed to load listings", e); allListings = []; }
+ }catch(e){ console.error("Failed to load listings", e); allListings = DEMO_LISTINGS; }
  render();
 }
 function render(){
@@ -352,13 +359,13 @@ document.getElementById("searchInput").addEventListener("input", event => { quer
 document.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => {
  activeType = button.dataset.type;
  document.querySelectorAll("[data-type]").forEach(item => item.classList.toggle("active", item === button));
- render();
+ loadListings();
 }));
 document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => {
  const key = button.dataset.filter;
  activeFilters.has(key) ? activeFilters.delete(key) : activeFilters.add(key);
  button.classList.toggle("active");
- render();
+ loadListings();
 }));
 document.getElementById("detailDrawer").addEventListener("click", event => { if(event.target.id === "detailDrawer") closeDetail(); });
 initMap();

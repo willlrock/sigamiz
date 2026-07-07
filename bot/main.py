@@ -503,19 +503,6 @@ def handle_university(call):
     bot.send_message(call.message.chat.id, "Uy turini tanlang:", reply_markup=chunked_markup(buttons, row_width=2))
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("dist_"))
-def handle_district(call):
-    district = call.data.split("_", 1)[1]
-    with draft_data(call.from_user.id, call.message.chat.id) as data:
-        data["district"] = district
-        data["flow_step"] = AddListingStates.housing_type
-    bot.answer_callback_query(call.id)
-    bot.edit_message_text(f"Tuman: {district}", call.message.chat.id, call.message.message_id)
-
-    buttons = [types.InlineKeyboardButton(opt, callback_data=f"house_{opt}") for opt in HOUSING_TYPES]
-    bot.send_message(call.message.chat.id, "Uy turini tanlang:", reply_markup=chunked_markup(buttons, row_width=2))
-
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith("house_"))
 def handle_housing_type(call):
     h_type = call.data.split("_", 1)[1]
