@@ -210,7 +210,6 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
     <span class="search-tune material-symbols-outlined" data-fallback="=">tune</span>
    </div>
    <div class="chip-row" id="filters">
-    <button class="chip active" data-type="offer" type="button" title="Uy bor"><span class="material-symbols-outlined" data-fallback="[]">apartment</span><span class="chip-label">Uy bor</span></button>
     <div class="chip price-chip" id="priceChip">
      <button class="price-chip-toggle" id="priceToggle" type="button" aria-expanded="false" title="Narx oralig'i">
       <span class="material-symbols-outlined" data-fallback="$">payments</span><span class="chip-label" id="priceChipLabel">Narx</span>
@@ -304,7 +303,7 @@ function compactPrice(value){
  return Math.round(price / 1000) + "k";
 }
 function typeInfo(item){
- return {key:"offer", label:"Uy bor", sub:`${item.people_needed || 1} xonadosh kerak`};
+ return {key:"offer", label:"E'lon", sub:`${item.people_needed || 1} xonadosh kerak`};
 }
 function titleFor(item){ return [item.district, item.university].filter(Boolean).join(", ") || "Toshkent"; }
 function parseMoney(value){

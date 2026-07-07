@@ -12,7 +12,8 @@
 *{box-sizing:border-box}body{margin:0;font-family:"Plus Jakarta Sans",sans-serif;background:var(--surface);color:var(--text)}a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit}button{cursor:pointer}
 .topbar{position:sticky;top:0;z-index:10;background:rgba(251,253,248,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline)}.nav-inner{max-width:1120px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{font-size:25px;font-weight:900;color:var(--primary)}.nav{display:flex;gap:20px;font-weight:800;color:var(--muted)}.nav a.active{color:var(--primary)}.login{border:0;border-radius:var(--pill);background:var(--primary);color:#fff;padding:10px 16px;font-weight:900}
 .wrap{max-width:1120px;margin:0 auto;padding:28px 16px 72px}.head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:16px 0 22px}.head h1{font-size:38px;line-height:1.08;margin:0}.head p{margin:8px 0 0;color:var(--muted)}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}.panel{background:#fff;border:1px solid var(--outline);border-radius:8px;box-shadow:var(--shadow)}.panel h2{font-size:18px;margin:0 0 14px}.form{padding:20px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}label{font-size:13px;font-weight:900;color:var(--muted)}input,select,textarea{width:100%;border:1px solid var(--outline);border-radius:8px;background:#fff;padding:11px 12px;color:var(--text)}textarea{min-height:108px;resize:vertical}.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.check{display:flex;align-items:center;gap:8px;border:1px solid var(--outline);border-radius:8px;padding:10px;font-weight:800;color:var(--muted)}.check input{width:auto}.actions{display:flex;align-items:center;gap:12px;margin-top:18px}.primary{border:0;border-radius:var(--pill);background:var(--primary);color:#fff;padding:12px 18px;font-weight:900}.ghost{border:1px solid var(--outline);border-radius:var(--pill);background:#fff;color:var(--primary);padding:11px 16px;font-weight:900}
+.auth-panel{display:grid;gap:12px;margin-bottom:18px;padding:18px;background:#fff;border:1px solid var(--outline);border-radius:8px;box-shadow:var(--shadow)}.auth-panel h2{font-size:20px;margin:0}.auth-panel p{margin:0;color:var(--muted);line-height:1.55}.auth-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.auth-ok{border-color:#A8DCB7;background:#F4FFF6}.auth-ok h2{color:var(--primary)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}.panel{background:#fff;border:1px solid var(--outline);border-radius:8px;box-shadow:var(--shadow)}.panel h2{font-size:18px;margin:0 0 14px}.form{padding:20px}.form.locked{opacity:.58;pointer-events:none}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.hidden-field{display:none}.hint{font-size:12px;color:var(--muted);line-height:1.45}.location-actions{display:flex;gap:8px;flex-wrap:wrap}.location-actions button{border:1px solid var(--outline);border-radius:var(--pill);background:#fff;color:var(--primary);padding:9px 12px;font-weight:900}.location-status{font-size:12px;color:var(--muted)}label{font-size:13px;font-weight:900;color:var(--muted)}input,select,textarea{width:100%;border:1px solid var(--outline);border-radius:8px;background:#fff;padding:11px 12px;color:var(--text)}textarea{min-height:108px;resize:vertical}.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.check{display:flex;align-items:center;gap:8px;border:1px solid var(--outline);border-radius:8px;padding:10px;font-weight:800;color:var(--muted)}.check input{width:auto}.actions{display:flex;align-items:center;gap:12px;margin-top:18px}.primary{border:0;border-radius:var(--pill);background:var(--primary);color:#fff;padding:12px 18px;font-weight:900}.primary:disabled{opacity:.55;cursor:not-allowed}.ghost{border:1px solid var(--outline);border-radius:var(--pill);background:#fff;color:var(--primary);padding:11px 16px;font-weight:900}
 .notice{display:none;margin-bottom:16px;border:1px solid var(--outline);border-radius:8px;background:#fff;padding:14px;color:var(--muted)}.notice.error{border-color:#F1B8B8;color:var(--danger);background:#FFF7F7}.notice.warn{border-color:#E9D58E;color:var(--warn);background:#FFFBEA}.notice.ok{border-color:#A8DCB7;color:var(--primary);background:#F4FFF6}
 .side{padding:18px}.profile{display:grid;gap:8px}.status{display:inline-flex;width:max-content;border-radius:var(--pill);background:var(--primary-soft);color:var(--primary);padding:6px 10px;font-size:12px;font-weight:900}.my-list{display:grid;gap:10px;margin-top:16px}.mini{border:1px solid var(--outline);border-radius:8px;padding:12px}.mini b{display:block;margin-bottom:4px}.mini span{font-size:12px;color:var(--muted)}.badge{display:inline-flex;border-radius:var(--pill);padding:4px 8px;font-size:11px;font-weight:900;background:var(--container);color:var(--muted);margin-top:8px}.badge.hidden_pending_review{background:#FFF1C2;color:#735500}.badge.active{background:var(--primary-soft);color:var(--primary)}.photo-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}.thumb{height:72px;border-radius:8px;background:var(--container);overflow:hidden;display:grid;place-items:center;color:var(--muted);font-size:12px}.thumb img{width:100%;height:100%;object-fit:cover}
 @media(max-width:860px){.nav{display:none}.layout{grid-template-columns:1fr}.grid,.checks{grid-template-columns:1fr}.head{display:block}.head h1{font-size:32px}}
@@ -21,29 +22,34 @@
 <body>
 <nav class="topbar"><div class="nav-inner"><a class="brand" href="/">Sigamiz</a><div class="nav"><a href="/xarita">Map</a><a href="/favorites">Izbrannoe</a><a class="active" href="/publish">Add Listing</a></div><button class="login" id="loginBtn" type="button">Telegram orqali kirish</button></div></nav>
 <main class="wrap">
- <section class="head"><div><h1>E'lon joylash</h1><p>Saytda faqat Telegram botni ishga tushirgan foydalanuvchilar e'lon joylay oladi.</p></div><a class="ghost" id="botLink" href="https://t.me/klapa_net_bot?start=start" target="_blank">Botni ochish</a></section>
+ <section class="head"><div><h1>E'lon joylash</h1><p>Avval Telegram orqali kiring. Shunda bitta akkaunt bitta faol kvartira joylaydi va maklerlarni kamaytiramiz.</p></div><a class="ghost" id="botLink" href="https://t.me/klapa_net_bot?start=start" target="_blank">Botni ochish</a></section>
  <div class="notice" id="notice"></div>
- <div id="telegramLogin"></div>
+ <section class="auth-panel" id="authPanel">
+  <h2>Telegram orqali tasdiqlang</h2>
+  <p>Bu qadam har bir kvartira ortida haqiqiy Telegram akkaunt borligini tekshiradi. Maqsad: bir akkaunt bitta kvartira joylaydi, dublikat va makler e'lonlari kamayadi.</p>
+  <div class="auth-actions"><div id="telegramLogin"></div><button class="login" id="authScrollBtn" type="button">Telegram orqali kirish</button></div>
+ </section>
  <section class="layout">
-  <form class="panel form" id="listingForm">
+  <form class="panel form locked" id="listingForm">
    <h2>Kvartira ma'lumotlari</h2>
    <div class="grid">
     <div class="field"><label for="district">Tuman</label><select id="district" required><option value="">Tanlang</option><option>Mirzo-Ulug'bek</option><option>Yunusobod</option><option>Mirobod</option><option>Chilonzor</option><option>Yakkasaroy</option><option>Shayxontohur</option><option>Uchtepa</option><option>Sergeli</option><option>Yashnobod</option><option>Bektemir</option><option>Olmazor</option></select></div>
     <div class="field"><label for="university">Universitet</label><select id="university" required><option value="">Tanlang</option><option>TATU</option><option>WIUT</option><option>INHA</option><option>O'zMU</option><option>TMI</option><option>TDIU</option><option>TSUULL</option><option>TTA</option><option>Other</option></select></div>
     <div class="field"><label for="housing_type">Uy turi</label><select id="housing_type" required><option>Kvartira</option><option>Xonadonli uy</option><option>Yotoqxona</option><option>Boshqa</option></select></div>
     <div class="field"><label for="room_count">Xonalar</label><input id="room_count" type="number" min="1" max="20" value="2" required></div>
-    <div class="field"><label for="price">Narx / kishi</label><input id="price" type="number" min="1" step="50000" required></div>
+    <div class="field"><label for="price">Narx / kishi</label><input id="price" type="text" inputmode="numeric" placeholder="900000" required></div>
     <div class="field"><label for="people_needed">Kerak odam</label><input id="people_needed" type="number" min="1" max="10" value="1" required></div>
     <div class="field"><label for="author_gender">Siz</label><select id="author_gender" required><option value="male">Erkak</option><option value="female">Ayol</option></select></div>
     <div class="field"><label for="preferred_gender">Xonadosh</label><select id="preferred_gender" required><option value="any">Farqi yo'q</option><option value="male">Erkak</option><option value="female">Ayol</option></select></div>
-    <div class="field"><label for="lat">Lat</label><input id="lat" type="number" step="0.000001" value="41.311081" required></div>
-    <div class="field"><label for="lng">Lng</label><input id="lng" type="number" step="0.000001" value="69.279700" required></div>
+    <div class="field full"><label for="address">Manzil</label><input id="address" type="text" placeholder="Masalan: TATU yonida, Yunusobod"><div class="location-actions"><button type="button" id="detectLocation">Joylashuvni aniqlash</button><button type="button" id="findAddress">Manzilni topish</button></div><div class="location-status" id="locationStatus">Manzil yozing yoki lokatsiyani avtomatik aniqlang.</div></div>
+    <div class="field hidden-field"><label for="lat">Lat</label><input id="lat" type="number" step="0.000001" value="" required></div>
+    <div class="field hidden-field"><label for="lng">Lng</label><input id="lng" type="number" step="0.000001" value="" required></div>
     <div class="field full"><label for="phone_number">Telefon</label><input id="phone_number" type="tel" placeholder="+998901234567"></div>
     <div class="field full"><label>Qulayliklar</label><div class="checks"><label class="check"><input type="checkbox" id="has_wifi">Wi-Fi</label><label class="check"><input type="checkbox" id="has_ac">Konditsioner</label><label class="check"><input type="checkbox" id="has_washing_machine">Kir yuvish</label><label class="check"><input type="checkbox" id="no_landlord_in_yard">Xo'jayinsiz</label><label class="check"><input type="checkbox" id="near_metro">Metro yaqin</label></div></div>
     <div class="field full"><label for="description">Tavsif</label><textarea id="description" maxlength="1000"></textarea></div>
-    <div class="field full"><label for="photos">Rasmlar</label><input id="photos" type="file" accept="image/*" multiple><div class="photo-row" id="preview"></div></div>
+    <div class="field full"><label for="photos">Rasmlar</label><input id="photos" type="file" accept="image/*" multiple><div class="hint">5 tagacha rasm yuklang.</div><div class="photo-row" id="preview"></div></div>
    </div>
-   <div class="actions"><button class="primary" type="submit">Joylashtirish</button><a class="ghost" href="/xarita">Xaritaga qaytish</a></div>
+   <div class="actions"><button class="primary" id="submitBtn" type="submit" disabled>Joylashtirish</button><a class="ghost" href="/xarita">Xaritaga qaytish</a></div>
   </form>
   <aside class="panel side">
    <h2>Profil</h2>
@@ -56,9 +62,18 @@
 <script>
 let currentUser = null;
 let selectedPhotos = [];
+let selectedPhotoLoad = Promise.resolve();
 function showNotice(text,type=""){const el=document.getElementById("notice");el.className=`notice ${type}`;el.style.display="block";el.textContent=text;}
 function hideNotice(){document.getElementById("notice").style.display="none";}
 function formatPrice(value){return new Intl.NumberFormat("ru-RU").format(Number(value||0))+" so'm";}
+function normalizeMoney(value){return String(value||"").replace(/[^\d]/g,"");}
+function setPublishEnabled(){
+ const ready = Boolean(currentUser && currentUser.bot_started_at);
+ document.getElementById("listingForm").classList.toggle("locked", !ready);
+ document.getElementById("submitBtn").disabled = !ready;
+ document.getElementById("authPanel").classList.toggle("auth-ok", ready);
+ document.getElementById("authPanel").querySelector("h2").textContent = ready ? "Telegram tasdiqlandi" : "Telegram orqali tasdiqlang";
+}
 async function telegramAuth(user){
  const res=await fetch("/api/auth/telegram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(user)});
  if(!res.ok) throw new Error("auth");
@@ -73,11 +88,14 @@ async function mountTelegramLogin(){
   window.onTelegramAuth=telegramAuth;
   const script=document.createElement("script");
   script.async=true;script.src="https://telegram.org/js/telegram-widget.js?22";
-  script.dataset.telegramLogin=config.bot_username;script.dataset.size="large";script.dataset.userpic="false";script.dataset.requestAccess="write";script.dataset.onauth="onTelegramAuth(user)";
+ script.dataset.telegramLogin=config.bot_username;script.dataset.size="large";script.dataset.userpic="false";script.dataset.requestAccess="write";script.dataset.onauth="onTelegramAuth(user)";
   document.getElementById("telegramLogin").appendChild(script);
  }else{
   document.getElementById("loginBtn").onclick=()=>telegramAuth({id:777000,username:"dev_user",first_name:"Dev"});
+  document.getElementById("authScrollBtn").onclick=()=>telegramAuth({id:777000,username:"dev_user",first_name:"Dev"});
  }
+ document.getElementById("loginBtn").onclick=document.getElementById("loginBtn").onclick||(()=>document.getElementById("authPanel").scrollIntoView({behavior:"smooth",block:"center"}));
+ document.getElementById("authScrollBtn").onclick=document.getElementById("authScrollBtn").onclick||(()=>document.getElementById("telegramLogin").scrollIntoView({behavior:"smooth",block:"center"}));
 }
 async function loadMe(){
  const data=await fetch("/api/me").then(res=>res.json());
@@ -87,22 +105,29 @@ async function loadMe(){
  if(!currentUser){
   loginBtn.textContent="Telegram orqali kirish";
   profile.textContent="Telegram orqali kiring.";
+  setPublishEnabled();
   return null;
  }
  loginBtn.textContent=currentUser.telegram_username?`@${currentUser.telegram_username}`:"Telegram";
  profile.innerHTML=`<span class="status">${currentUser.bot_started_at?"Bot ulangan":"Bot kerak"}</span><b>${currentUser.first_name||"Telegram user"}</b><span>${currentUser.telegram_username?`@${currentUser.telegram_username}`:""}</span>`;
  if(!currentUser.bot_started_at) showNotice("E'lon joylash uchun avval Telegram botni bir marta ishga tushiring.", "warn");
  else hideNotice();
+ setPublishEnabled();
  return currentUser;
 }
 function readFiles(files){
  selectedPhotos=[];
  const preview=document.getElementById("preview");
  preview.innerHTML="";
- Array.from(files).slice(0,5).forEach(file=>{
+ const readers=Array.from(files).slice(0,5).map(file=>new Promise((resolve,reject)=>{
   const reader=new FileReader();
-  reader.onload=()=>{selectedPhotos.push(reader.result);preview.insertAdjacentHTML("beforeend",`<div class="thumb"><img src="${reader.result}" alt="Rasm"></div>`);};
+  reader.onload=()=>resolve(reader.result);
+  reader.onerror=reject;
   reader.readAsDataURL(file);
+ }));
+ selectedPhotoLoad=Promise.all(readers).then(results=>{
+  selectedPhotos=results;
+  preview.innerHTML=results.map(src=>`<div class="thumb"><img src="${src}" alt="Rasm"></div>`).join("");
  });
 }
 async function loadMyListings(){
@@ -117,21 +142,56 @@ function payloadFromForm(){
  const ids=["district","university","housing_type","room_count","price","people_needed","author_gender","preferred_gender","lat","lng","phone_number","description"];
  const payload={photos:selectedPhotos};
  ids.forEach(id=>payload[id]=document.getElementById(id).value);
+ payload.price=normalizeMoney(payload.price);
+ payload.address=document.getElementById("address").value;
  ["has_wifi","has_ac","has_washing_machine","no_landlord_in_yard","near_metro"].forEach(id=>payload[id]=document.getElementById(id).checked);
  return payload;
 }
+function setLocation(lat,lng,label){
+ document.getElementById("lat").value=Number(lat).toFixed(6);
+ document.getElementById("lng").value=Number(lng).toFixed(6);
+ document.getElementById("locationStatus").textContent=label||"Lokatsiya saqlandi.";
+}
+document.getElementById("detectLocation").addEventListener("click",()=>{
+ const status=document.getElementById("locationStatus");
+ if(!navigator.geolocation){status.textContent="Brauzer lokatsiyani aniqlay olmadi. Manzil yozib toping.";return;}
+ status.textContent="Lokatsiya aniqlanmoqda...";
+ navigator.geolocation.getCurrentPosition(
+  pos=>setLocation(pos.coords.latitude,pos.coords.longitude,"Lokatsiya avtomatik saqlandi."),
+  ()=>{status.textContent="Lokatsiyaga ruxsat berilmadi. Manzil yozib toping."},
+  {enableHighAccuracy:true,timeout:10000,maximumAge:60000}
+ );
+});
+document.getElementById("findAddress").addEventListener("click",async()=>{
+ const address=document.getElementById("address").value.trim();
+ const status=document.getElementById("locationStatus");
+ if(!address){status.textContent="Avval manzil yozing.";return;}
+ status.textContent="Manzil qidirilmoqda...";
+ try{
+  const url=`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address+", Tashkent, Uzbekistan")}`;
+  const items=await fetch(url,{headers:{"Accept":"application/json"}}).then(res=>res.json());
+  if(!items.length){status.textContent="Manzil topilmadi. Yaqinroq mo'ljal bilan qayta urinib ko'ring.";return;}
+  setLocation(items[0].lat,items[0].lon,"Manzil bo'yicha lokatsiya saqlandi.");
+ }catch(e){status.textContent="Manzilni topib bo'lmadi. Keyinroq qayta urinib ko'ring.";}
+});
 document.getElementById("photos").addEventListener("change",event=>readFiles(event.target.files));
 document.getElementById("listingForm").addEventListener("submit",async event=>{
  event.preventDefault();
  hideNotice();
+ if(!currentUser){showNotice("Avval Telegram orqali kiring. Bu makler va dublikatlarni kamaytirish uchun kerak.","error");document.getElementById("authPanel").scrollIntoView({behavior:"smooth",block:"center"});return;}
+ if(!currentUser.bot_started_at){showNotice("Botni bir marta oching, keyin sahifani yangilang.","warn");return;}
+ if(!document.getElementById("lat").value||!document.getElementById("lng").value){showNotice("Avval lokatsiyani avtomatik aniqlang yoki manzilni toping.","error");return;}
  try{
+  await selectedPhotoLoad;
   const res=await fetch("/api/listings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payloadFromForm())});
   const data=await res.json().catch(()=>({}));
   if(res.status===401){showNotice("Avval Telegram orqali kiring.","error");return;}
   if(res.status===403){showNotice("Avval Telegram botni bir marta ishga tushiring, keyin sahifani yangilang.","warn");return;}
+  if(res.status===409){showNotice(data.detail||"Sizda allaqachon faol e'lon bor. Bitta akkaunt bitta kvartira joylay oladi.","warn");return;}
   if(!res.ok) throw new Error(data.detail||"publish");
   showNotice(data.status==="hidden_pending_review"?"E'lon saqlandi va foto o'xshashligi sabab admin tekshiruviga yuborildi.":"E'lon joylashtirildi.","ok");
   event.target.reset();selectedPhotos=[];document.getElementById("preview").innerHTML="";
+  document.getElementById("lat").value="";document.getElementById("lng").value="";document.getElementById("locationStatus").textContent="Manzil yozing yoki lokatsiyani avtomatik aniqlang.";
   await loadMyListings();
  }catch(e){showNotice(String(e.message||e),"error");}
 });

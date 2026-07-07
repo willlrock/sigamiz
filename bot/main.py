@@ -299,6 +299,123 @@ def mark_bot_started(user):
     conn.close()
 
 
+def ensure_search_preferences_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS search_preferences (
+            telegram_user_id INTEGER PRIMARY KEY,
+            price_min INTEGER,
+            price_max INTEGER,
+            districts TEXT,
+            housing_type TEXT,
+            room_count INTEGER,
+            university TEXT,
+            has_wifi BOOLEAN DEFAULT 0,
+            has_ac BOOLEAN DEFAULT 0,
+            has_washing_machine BOOLEAN DEFAULT 0,
+            no_landlord_in_yard BOOLEAN DEFAULT 0,
+            near_metro BOOLEAN DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
+def save_search_preferences(user_id, data):
+    district = data.get("s_district")
+    amenities = set(data.get("s_amenities", []))
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    ensure_search_preferences_table(cursor)
+    cursor.execute(
+        """
+        INSERT INTO search_preferences (
+            telegram_user_id, price_min, price_max, districts,
+            has_wifi, has_ac, has_washing_machine, no_landlord_in_yard,
+            near_metro, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(telegram_user_id) DO UPDATE SET
+            price_min = excluded.price_min,
+            price_max = excluded.price_max,
+            districts = excluded.districts,
+            has_wifi = excluded.has_wifi,
+            has_ac = excluded.has_ac,
+            has_washing_machine = excluded.has_washing_machine,
+            no_landlord_in_yard = excluded.no_landlord_in_yard,
+            near_metro = excluded.near_metro,
+            updated_at = excluded.updated_at
+        """,
+        (
+            user_id,
+            data.get("s_price_min"),
+            data.get("s_price_max"),
+            json.dumps([district] if district else [], ensure_ascii=False),
+            1 if "wifi" in amenities else 0,
+            1 if "ac" in amenities else 0,
+            1 if "washer" in amenities else 0,
+            1 if "no_landlord" in amenities else 0,
+            1 if "metro" in amenities else 0,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def listing_matches_preferences(listing, prefs):
+    if prefs["price_min"] is not None and listing["price_per_person"] < prefs["price_min"]:
+        return False
+    if prefs["price_max"] is not None and listing["price_per_person"] > prefs["price_max"]:
+        return False
+    try:
+        districts = json.loads(prefs["districts"] or "[]")
+    except json.JSONDecodeError:
+        districts = []
+    if districts and listing["district"] not in districts:
+        return False
+    if prefs["housing_type"] and listing["housing_type"] != prefs["housing_type"]:
+        return False
+    if prefs["room_count"] is not None and listing["room_count"] != prefs["room_count"]:
+        return False
+    if prefs["university"] and listing["university"] != prefs["university"]:
+        return False
+    for column in (
+        "has_wifi",
+        "has_ac",
+        "has_washing_machine",
+        "no_landlord_in_yard",
+        "near_metro",
+    ):
+        if prefs[column] and not listing[column]:
+            return False
+    return True
+
+
+def notify_matching_search_preferences(cursor, listing_id):
+    listing = cursor.execute("SELECT * FROM listings WHERE id = ?", (listing_id,)).fetchone()
+    if not listing or listing["status"] != "active":
+        return
+    ensure_search_preferences_table(cursor)
+    rows = cursor.execute(
+        "SELECT * FROM search_preferences WHERE telegram_user_id != ?",
+        (listing["telegram_user_id"],),
+    ).fetchall()
+    for prefs in rows:
+        if not listing_matches_preferences(listing, prefs):
+            continue
+        text = (
+            "Siz qidirgan shartlarga mos yangi kvartira chiqdi.\n\n"
+            f"Narx: {format_price(listing['price_per_person'])} so'm/kishi\n"
+            f"Tuman: {listing['district'] or '-'}\n"
+            f"Universitet: {listing['university'] or '-'}\n"
+            f"Uy turi: {listing['housing_type'] or '-'}"
+        )
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Xaritada ko'rish", url=f"{SITE_URL}/xarita?listing_type=offer&view=list"))
+        try:
+            bot.send_message(prefs["telegram_user_id"], text, reply_markup=markup)
+        except Exception as exc:
+            print(f"Failed to notify {prefs['telegram_user_id']}: {exc}")
+
+
 def is_admin_chat(message):
     if not ADMIN_CHAT_ID:
         return False
@@ -830,6 +947,7 @@ def save_listing_to_db(user_id, chat_id, username=None):
         needed_int = 3 if needed_val == "3" else int(needed_val)
 
         conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -879,6 +997,7 @@ def save_listing_to_db(user_id, chat_id, username=None):
             img.save(file_path, "JPEG", quality=80)
             cursor.execute(f"INSERT INTO listing_photos (listing_id, {photo_column}) VALUES (?, ?)", (listing_id, file_path))
 
+        notify_matching_search_preferences(cursor, listing_id)
         conn.commit()
         conn.close()
         return listing_id
@@ -1067,9 +1186,19 @@ def run_search_and_reply(user_id, chat_id):
     conn.close()
 
     if not results:
+        save_search_preferences(user_id, {
+            "s_price_min": price_min,
+            "s_price_max": price_max,
+            "s_amenities": amenities,
+            "s_district": district,
+        })
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🗺 Xaritada ko'rish", url=f"{SITE_URL}/xarita?listing_type=offer"))
-        bot.send_message(chat_id, "Hozircha mos e'lon topilmadi. Filtrlarni o'zgartirib ko'ring yoki xaritani oching.", reply_markup=markup)
+        bot.send_message(
+            chat_id,
+            "Hozircha mos e'lon topilmadi. Qidiruv shartlaringizni saqlab qo'ydim: mos kvartira chiqsa Telegram orqali xabar beraman.",
+            reply_markup=markup,
+        )
         clear_draft(user_id, chat_id)
         return
 

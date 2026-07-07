@@ -4,6 +4,8 @@ Student housing and roommate map for Tashkent students.
 
 Sigamiz combines a Telegram bot for listing creation with a FastAPI backend and static frontend pages. Students can publish either an "I have a place" listing or an "I am looking for housing" listing, then browse active listings on a map.
 
+Feature documentation lives in [FEATURES.md](FEATURES.md).
+
 ## Project Structure
 
 - `bot/` - Telegram bot powered by pyTelegramBotAPI.
@@ -18,6 +20,7 @@ Create `.env` in the project root:
 
 ```env
 BOT_TOKEN=your_telegram_bot_token
+BOT_USERNAME=your_bot_username_without_at
 ADMIN_CHAT_ID=your_admin_chat_id
 SITE_URL=https://your-domain.example
 SEED_DEMO_DATA=false

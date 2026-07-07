@@ -21,6 +21,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 BOT_USERNAME = os.getenv("BOT_USERNAME")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
+SITE_URL = os.getenv("SITE_URL", "https://klapa.net").rstrip("/")
 SESSION_SECRET = os.getenv("SESSION_SECRET") or BOT_TOKEN or secrets.token_hex(32)
 
 app = FastAPI()
@@ -32,6 +33,20 @@ def send_admin_notification(text):
             requests.post(url, data={"chat_id": ADMIN_CHAT_ID, "text": text})
         except Exception as e:
             print(f"Failed to send admin notification: {e}")
+
+def send_telegram_message(chat_id, text, reply_markup=None):
+    if not BOT_TOKEN or not chat_id:
+        return False
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text}
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup, ensure_ascii=False)
+    try:
+        response = requests.post(url, data=payload, timeout=8)
+        return response.ok
+    except Exception as e:
+        print(f"Failed to send Telegram message to {chat_id}: {e}")
+        return False
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -355,6 +370,8 @@ def parse_int_field(payload, key, *, minimum=None, maximum=None, required=True):
         if required:
             raise HTTPException(status_code=400, detail=f"{key} is required")
         return None
+    if isinstance(raw, str):
+        raw = raw.replace(" ", "").replace(",", "").replace(".", "")
     try:
         value = int(raw)
     except (TypeError, ValueError):
@@ -419,6 +436,58 @@ def find_similar_photo(cursor, photo_hash, max_distance=8):
         if distance <= max_distance:
             return {"listing_id": row["listing_id"], "distance": distance}
     return None
+
+def listing_matches_preferences(listing, prefs):
+    if prefs["price_min"] is not None and listing["price_per_person"] < prefs["price_min"]:
+        return False
+    if prefs["price_max"] is not None and listing["price_per_person"] > prefs["price_max"]:
+        return False
+    try:
+        districts = json.loads(prefs["districts"] or "[]")
+    except json.JSONDecodeError:
+        districts = []
+    if districts and listing["district"] not in districts:
+        return False
+    if prefs["housing_type"] and listing["housing_type"] != prefs["housing_type"]:
+        return False
+    if prefs["room_count"] is not None and listing["room_count"] != prefs["room_count"]:
+        return False
+    if prefs["university"] and listing["university"] != prefs["university"]:
+        return False
+    for column in (
+        "has_wifi",
+        "has_ac",
+        "has_washing_machine",
+        "no_landlord_in_yard",
+        "near_metro",
+    ):
+        if prefs[column] and not listing[column]:
+            return False
+    return True
+
+def notify_matching_search_preferences(cursor, listing):
+    rows = cursor.execute("SELECT * FROM search_preferences WHERE telegram_user_id != ?", (listing["telegram_user_id"],)).fetchall()
+    if not rows:
+        return 0
+    notified = 0
+    for prefs in rows:
+        if not listing_matches_preferences(listing, prefs):
+            continue
+        text = (
+            "Siz qidirgan shartlarga mos yangi kvartira chiqdi.\n\n"
+            f"Narx: {listing['price_per_person']:,} so'm/kishi\n".replace(",", " ")
+            + f"Tuman: {listing['district'] or '-'}\n"
+            + f"Universitet: {listing['university'] or '-'}\n"
+            + f"Uy turi: {listing['housing_type'] or '-'}"
+        )
+        markup = {
+            "inline_keyboard": [[
+                {"text": "Xaritada ko'rish", "url": f"{SITE_URL}/xarita?listing_type=offer&view=list"}
+            ]]
+        }
+        if send_telegram_message(prefs["telegram_user_id"], text, markup):
+            notified += 1
+    return notified
 
 @app.get("/api/listings")
 def get_listings(
@@ -786,6 +855,16 @@ async def create_listing(payload: dict, request: Request):
     if not user["bot_started_at"]:
         conn.close()
         raise HTTPException(status_code=403, detail="Bot must be started before publishing")
+    active_listing = cursor.execute(
+        "SELECT id FROM listings WHERE telegram_user_id = ? AND status IN ('active', 'hidden_pending_review')",
+        (user_id,),
+    ).fetchone()
+    if active_listing:
+        conn.close()
+        raise HTTPException(
+            status_code=409,
+            detail="Sizda allaqachon faol e'lon bor. Bitta Telegram akkaunt bitta kvartira joylay oladi.",
+        )
 
     district = (payload.get("district") or "").strip()[:80]
     university = (payload.get("university") or "").strip()[:80]
@@ -895,12 +974,13 @@ async def create_listing(payload: dict, request: Request):
             f"Ban qilish: /review {listing_id} ban"
         )
 
-    conn.commit()
     listing = cursor.execute("SELECT * FROM listings WHERE id = ?", (listing_id,)).fetchone()
+    notified_count = notify_matching_search_preferences(cursor, listing) if status == "active" else 0
+    conn.commit()
     photos_by_listing = get_listing_photos(cursor, [listing_id])
     result = listing_to_dict(listing, photos_by_listing, set(), {})
     conn.close()
-    return {"ok": True, "status": status, "listing": result, "duplicate_matches": duplicate_matches[:3]}
+    return {"ok": True, "status": status, "listing": result, "duplicate_matches": duplicate_matches[:3], "notified_count": notified_count}
 
 @app.post("/api/report")
 async def report_listing(listing_id: int, reason: str, reporter_id: int = 0, reporter_key: str | None = None):

@@ -90,9 +90,10 @@ async function mountTelegramLogin(){
   script.dataset.telegramLogin = config.bot_username;
   script.dataset.size = "large";
   script.dataset.userpic = "false";
-  script.dataset.requestAccess = "write";
+ script.dataset.requestAccess = "write";
   script.dataset.onauth = "onTelegramAuth(user)";
   target.appendChild(script);
+  document.getElementById("loginBtn").onclick = () => target.scrollIntoView({behavior:"smooth", block:"center"});
  }else{
   document.getElementById("loginBtn").onclick = async () => {
    await telegramAuth({id:777000, username:"dev_user", first_name:"Dev"});
