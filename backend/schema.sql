@@ -92,3 +92,13 @@ CREATE TABLE IF NOT EXISTS search_preferences (
  near_metro BOOLEAN DEFAULT 0,
  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS listing_photo_hashes (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ listing_id INTEGER NOT NULL,
+ photo_hash TEXT NOT NULL,
+ created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (listing_id) REFERENCES listings (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_listing_photo_hashes_hash ON listing_photo_hashes (photo_hash);

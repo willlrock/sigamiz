@@ -2,6 +2,8 @@ from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import base64
+import binascii
+import io
 import hashlib
 import hmac
 import json
@@ -13,6 +15,7 @@ import time
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
+from PIL import Image
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -128,6 +131,18 @@ def migrate_db(cursor):
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS listing_photo_hashes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            listing_id INTEGER NOT NULL,
+            photo_hash TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (listing_id) REFERENCES listings (id)
+        )
+    """)
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_listing_photo_hashes_hash ON listing_photo_hashes (photo_hash)"
+    )
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -294,6 +309,12 @@ def get_photo_path_column(cursor):
         return "photo_path"
     return None
 
+def get_photo_insert_column(cursor):
+    columns = {row[1] for row in cursor.execute("PRAGMA table_info(listing_photos)").fetchall()}
+    if "photo_path" in columns:
+        return "photo_path"
+    return "file_path"
+
 def normalize_photo_path(path):
     if not path:
         return None
@@ -324,6 +345,80 @@ def get_listing_photos(cursor, listing_ids):
         if photo:
             photos_by_listing.setdefault(row["listing_id"], []).append(photo)
     return photos_by_listing
+
+def bool_from_payload(payload, key):
+    return 1 if payload.get(key) in (True, 1, "1", "true", "on", "yes") else 0
+
+def parse_int_field(payload, key, *, minimum=None, maximum=None, required=True):
+    raw = payload.get(key)
+    if raw in (None, ""):
+        if required:
+            raise HTTPException(status_code=400, detail=f"{key} is required")
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail=f"{key} must be a number")
+    if minimum is not None and value < minimum:
+        raise HTTPException(status_code=400, detail=f"{key} is too small")
+    if maximum is not None and value > maximum:
+        raise HTTPException(status_code=400, detail=f"{key} is too large")
+    return value
+
+def parse_float_field(payload, key, *, minimum=None, maximum=None):
+    raw = payload.get(key)
+    if raw in (None, ""):
+        raise HTTPException(status_code=400, detail=f"{key} is required")
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail=f"{key} must be a number")
+    if minimum is not None and value < minimum:
+        raise HTTPException(status_code=400, detail=f"{key} is too small")
+    if maximum is not None and value > maximum:
+        raise HTTPException(status_code=400, detail=f"{key} is too large")
+    return value
+
+def decode_photo_data(photo_data):
+    if not photo_data:
+        raise HTTPException(status_code=400, detail="photo is empty")
+    encoded = str(photo_data)
+    if "," in encoded:
+        encoded = encoded.split(",", 1)[1]
+    try:
+        return base64.b64decode(encoded, validate=True)
+    except binascii.Error:
+        raise HTTPException(status_code=400, detail="photo must be base64")
+
+def average_image_hash(image):
+    small = image.convert("L").resize((8, 8), Image.Resampling.LANCZOS)
+    values = list(small.getdata())
+    avg = sum(values) / len(values)
+    bits = "".join("1" if value >= avg else "0" for value in values)
+    return f"{int(bits, 2):016x}"
+
+def hash_distance(left, right):
+    try:
+        return (int(left, 16) ^ int(right, 16)).bit_count()
+    except (TypeError, ValueError):
+        return 64
+
+def find_similar_photo(cursor, photo_hash, max_distance=8):
+    rows = cursor.execute(
+        """
+        SELECT listing_photo_hashes.listing_id, listing_photo_hashes.photo_hash
+        FROM listing_photo_hashes
+        JOIN listings ON listings.id = listing_photo_hashes.listing_id
+        WHERE listings.status IN ('active', 'hidden_pending_review')
+        ORDER BY listing_photo_hashes.id DESC
+        LIMIT 500
+        """
+    ).fetchall()
+    for row in rows:
+        distance = hash_distance(photo_hash, row["photo_hash"])
+        if distance <= max_distance:
+            return {"listing_id": row["listing_id"], "distance": distance}
+    return None
 
 @app.get("/api/listings")
 def get_listings(
@@ -659,6 +754,154 @@ def get_recommended(request: Request):
     conn.close()
     return results
 
+@app.get("/api/my-listings")
+def get_my_listings(request: Request):
+    user_id = require_user_id(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    rows = cursor.execute(
+        """
+        SELECT * FROM listings
+        WHERE telegram_user_id = ? AND status != 'removed'
+        ORDER BY created_at DESC, id DESC
+        """,
+        (user_id,),
+    ).fetchall()
+    listing_ids = [row["id"] for row in rows]
+    photos_by_listing = get_listing_photos(cursor, listing_ids)
+    favorite_ids, viewed_map = get_user_listing_state(cursor, user_id, listing_ids)
+    results = [listing_to_dict(row, photos_by_listing, favorite_ids, viewed_map) for row in rows]
+    conn.close()
+    return results
+
+@app.post("/api/listings")
+async def create_listing(payload: dict, request: Request):
+    user_id = require_user_id(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    user = cursor.execute("SELECT * FROM users WHERE telegram_user_id = ?", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=401, detail="Telegram login required")
+    if not user["bot_started_at"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Bot must be started before publishing")
+
+    district = (payload.get("district") or "").strip()[:80]
+    university = (payload.get("university") or "").strip()[:80]
+    housing_type = (payload.get("housing_type") or "").strip()[:80]
+    description = (payload.get("description") or "").strip()[:1000]
+    phone_number = (payload.get("phone_number") or "").strip()[:40] or None
+    author_gender = (payload.get("author_gender") or "").strip()
+    preferred_gender = (payload.get("preferred_gender") or "").strip()
+    if not district or not university or not housing_type:
+        conn.close()
+        raise HTTPException(status_code=400, detail="district, university and housing_type are required")
+    if author_gender not in {"male", "female"}:
+        conn.close()
+        raise HTTPException(status_code=400, detail="author_gender must be male or female")
+    if preferred_gender not in {"male", "female", "any"}:
+        conn.close()
+        raise HTTPException(status_code=400, detail="preferred_gender must be male, female or any")
+
+    lat = parse_float_field(payload, "lat", minimum=40.0, maximum=42.5)
+    lng = parse_float_field(payload, "lng", minimum=68.0, maximum=71.5)
+    price = parse_int_field(payload, "price", minimum=1, maximum=100_000_000)
+    people_needed = parse_int_field(payload, "people_needed", minimum=1, maximum=10)
+    room_count = parse_int_field(payload, "room_count", minimum=1, maximum=20)
+    photos = payload.get("photos") or []
+    if not isinstance(photos, list):
+        conn.close()
+        raise HTTPException(status_code=400, detail="photos must be an array")
+    photos = photos[:5]
+
+    cursor.execute(
+        """
+        INSERT INTO listings (
+            telegram_user_id, telegram_username, listing_type, university, district, housing_type,
+            description, phone_number, room_count, author_gender, preferred_gender,
+            lat, lng, price_per_person, people_needed,
+            has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, status, expires_at
+        )
+        VALUES (?, ?, 'offer', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now', '+7 days'))
+        """,
+        (
+            user_id,
+            user["telegram_username"] or "",
+            university,
+            district,
+            housing_type,
+            description or None,
+            phone_number,
+            room_count,
+            author_gender,
+            preferred_gender,
+            lat,
+            lng,
+            price,
+            people_needed,
+            bool_from_payload(payload, "has_wifi"),
+            bool_from_payload(payload, "has_ac"),
+            bool_from_payload(payload, "has_washing_machine"),
+            bool_from_payload(payload, "no_landlord_in_yard"),
+            bool_from_payload(payload, "near_metro"),
+        ),
+    )
+    listing_id = cursor.lastrowid
+    photo_column = get_photo_insert_column(cursor)
+    listing_dir = os.path.join(UPLOAD_DIR, str(listing_id))
+    os.makedirs(listing_dir, exist_ok=True)
+
+    duplicate_matches = []
+    for index, photo in enumerate(photos):
+        photo_bytes = decode_photo_data(photo)
+        try:
+            image = Image.open(io.BytesIO(photo_bytes))
+            image.verify()
+            image = Image.open(io.BytesIO(photo_bytes))
+        except Exception:
+            conn.rollback()
+            conn.close()
+            raise HTTPException(status_code=400, detail="photo is not a valid image")
+        image_hash = average_image_hash(image)
+        similar = find_similar_photo(cursor, image_hash)
+        if similar:
+            duplicate_matches.append(similar)
+        if image.width > 1200:
+            ratio = 1200 / float(image.width)
+            image = image.resize((1200, int(float(image.height) * ratio)), Image.Resampling.LANCZOS)
+        file_path = os.path.join(listing_dir, f"{index}.jpg")
+        image.convert("RGB").save(file_path, "JPEG", quality=80)
+        cursor.execute(
+            f"INSERT INTO listing_photos (listing_id, {photo_column}, sort_order) VALUES (?, ?, ?)",
+            (listing_id, file_path, index),
+        )
+        cursor.execute(
+            "INSERT INTO listing_photo_hashes (listing_id, photo_hash) VALUES (?, ?)",
+            (listing_id, image_hash),
+        )
+
+    status = "active"
+    if duplicate_matches:
+        status = "hidden_pending_review"
+        cursor.execute("UPDATE listings SET status = ? WHERE id = ?", (status, listing_id))
+        first_match = duplicate_matches[0]
+        send_admin_notification(
+            f"Yangi e'lon foto bo'yicha dublikatga o'xshaydi va tekshiruvga yashirildi.\n"
+            f"E'lon: {listing_id}\n"
+            f"O'xshash e'lon: {first_match['listing_id']}\n"
+            f"Masofa: {first_match['distance']}\n\n"
+            f"Tasdiqlash: /review {listing_id} approve\n"
+            f"Ban qilish: /review {listing_id} ban"
+        )
+
+    conn.commit()
+    listing = cursor.execute("SELECT * FROM listings WHERE id = ?", (listing_id,)).fetchone()
+    photos_by_listing = get_listing_photos(cursor, [listing_id])
+    result = listing_to_dict(listing, photos_by_listing, set(), {})
+    conn.close()
+    return {"ok": True, "status": status, "listing": result, "duplicate_matches": duplicate_matches[:3]}
+
 @app.post("/api/report")
 async def report_listing(listing_id: int, reason: str, reporter_id: int = 0, reporter_key: str | None = None):
     normalized_reporter_key = (reporter_key or "").strip()[:128]
@@ -737,6 +980,10 @@ async def get_map():
 @app.get("/favorites")
 async def get_favorites_page():
     return FileResponse(os.path.join(FRONTEND_DIR, "favorites.html"))
+
+@app.get("/publish")
+async def get_publish_page():
+    return FileResponse(os.path.join(FRONTEND_DIR, "publish.html"))
 
 @app.get("/about")
 async def get_about():
