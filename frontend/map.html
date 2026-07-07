@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="uz">
 <head>
 <meta charset="utf-8">
@@ -90,10 +90,14 @@ body.sheet-collapsed .sheet-toggle .icon{transform:rotate(180deg)}
 .card{background:#fff;border:1px solid var(--outline);border-radius:32px;overflow:hidden;box-shadow:var(--shadow-1);cursor:pointer;transition:.22s ease;display:flex;flex-direction:column}
 .card:hover{box-shadow:var(--shadow-2);transform:translateY(-1px)}
 .card.selected{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,106,58,.12),var(--shadow-2)}
+.card.viewed{opacity:.72}
+.card.viewed:hover{opacity:1}
 .card-media{height:232px;position:relative;background:var(--surface-high);display:grid;place-items:center;color:var(--muted);font-size:13px;overflow:hidden}
 .card-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .7s ease}
 .card:hover .card-media img{transform:scale(1.04)}
 .favorite{position:absolute;top:14px;right:14px;width:46px;height:46px;border:0;border-radius:50%;background:rgba(251,253,248,.84);backdrop-filter:blur(10px);display:grid;place-items:center;color:var(--muted);box-shadow:var(--shadow-1)}
+.favorite.active{background:var(--primary);color:#fff}
+.viewed-badge{position:absolute;left:14px;top:14px;border-radius:var(--pill);background:rgba(251,253,248,.9);color:var(--primary);font-size:11px;font-weight:800;padding:7px 10px;box-shadow:var(--shadow-1)}
 .card-price{font-size:21px;font-weight:800;color:var(--primary);letter-spacing:0;line-height:1.15}
 .card-price small{font-size:13px;font-weight:700;color:var(--muted)}
 .card-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px}
@@ -182,12 +186,13 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
   <a class="brand" href="/">Sigamiz</a>
   <nav class="nav">
    <a class="active" href="/xarita">Map</a>
+   <a href="/favorites">Izbrannoe</a>
    <a href="/about">About</a>
    <a href="/#how-it-works">How it works</a>
   </nav>
   <div class="actions">
    <a class="add-btn" href="https://t.me/klapa_net_bot?start=add" target="_blank"><span class="material-symbols-outlined" data-fallback="+">add</span>Add Listing</a>
-   <button class="icon-btn" aria-label="Profile"><span class="material-symbols-outlined" data-fallback="@">account_circle</span></button>
+   <a class="icon-btn" aria-label="Izbrannoe" href="/favorites"><span class="material-symbols-outlined" data-fallback="@">account_circle</span></a>
   </div>
  </div>
 </header>
@@ -205,8 +210,7 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
     <span class="search-tune material-symbols-outlined" data-fallback="=">tune</span>
    </div>
    <div class="chip-row" id="filters">
-    <button class="chip active" data-type="all" type="button" title="Hammasi"><span class="material-symbols-outlined" data-fallback="*">apps</span><span class="chip-label">Hammasi</span></button>
-    <button class="chip" data-type="offer" type="button" title="Uy bor"><span class="material-symbols-outlined" data-fallback="□">apartment</span><span class="chip-label">Uy bor</span></button>
+    <button class="chip active" data-type="offer" type="button" title="Uy bor"><span class="material-symbols-outlined" data-fallback="[]">apartment</span><span class="chip-label">Uy bor</span></button>
     <div class="chip price-chip" id="priceChip">
      <button class="price-chip-toggle" id="priceToggle" type="button" aria-expanded="false" title="Narx oralig'i">
       <span class="material-symbols-outlined" data-fallback="$">payments</span><span class="chip-label" id="priceChipLabel">Narx</span>
@@ -218,7 +222,7 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
     </div>
     <button class="chip" data-filter="has_wifi" type="button" title="Wi-Fi"><span class="material-symbols-outlined" data-fallback="~">wifi</span><span class="chip-label">Wi-Fi</span></button>
     <button class="chip" data-filter="has_ac" type="button" title="Konditsioner"><span class="material-symbols-outlined" data-fallback="*">ac_unit</span><span class="chip-label">Konditsioner</span></button>
-    <button class="chip" data-filter="has_washing_machine" type="button" title="Kir yuvish"><span class="material-symbols-outlined" data-fallback="□">local_laundry_service</span><span class="chip-label">Kir yuvish</span></button>
+    <button class="chip" data-filter="has_washing_machine" type="button" title="Kir yuvish"><span class="material-symbols-outlined" data-fallback="[]">local_laundry_service</span><span class="chip-label">Kir yuvish</span></button>
     <button class="chip" data-filter="near_metro" type="button" title="Metro"><span class="material-symbols-outlined" data-fallback="=">train</span><span class="chip-label">Metro</span></button>
    </div>
   </div>
@@ -265,7 +269,7 @@ let priceMin = null, priceMax = null, priceReloadTimer;
 const activeFilters = new Set();
 const amenityLabels = {
  has_wifi:["wifi","~","Wi-Fi"], has_ac:["ac_unit","*","Konditsioner"],
- has_washing_machine:["local_laundry_service","□","Kir yuvish"], no_landlord_in_yard:["home","^","Xo'jayinsiz"],
+ has_washing_machine:["local_laundry_service","â–¡","Kir yuvish"], no_landlord_in_yard:["home","^","Xo'jayinsiz"],
  near_metro:["train","=","Metro"]
 };
 
@@ -425,10 +429,13 @@ function renderCards(items){
  cards.innerHTML = items.map(item => {
   const type = typeInfo(item);
   const photo = photoFor(item);
-  return `<article class="card" data-id="${item.id}" onclick="openDetail(${item.id})">
+  const favoriteClass = item.is_favorite ? " active" : "";
+  const viewedClass = item.viewed_at ? " viewed" : "";
+  return `<article class="card${viewedClass}" data-id="${item.id}" onclick="openDetail(${item.id})">
    <div class="card-media">
     ${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}
-    <button class="favorite" type="button" onclick="event.stopPropagation()">${iconMarkup("favorite_border")}</button>
+    ${item.viewed_at ? `<span class="viewed-badge">Ko'rilgan</span>` : ""}
+    <button class="favorite${favoriteClass}" type="button" aria-label="Saqlash" onclick="toggleFavorite(event, ${item.id})">${iconMarkup("favorite_border")}</button>
    </div>
    <div class="card-body">
     <div class="card-price">${formatPrice(item.price)} <small>/oy</small></div>
@@ -456,6 +463,7 @@ async function fetchDetail(item){
 async function openDetail(id){
  let item = allListings.find(entry => Number(entry.id) === Number(id));
  if(!item) return;
+ markViewed(id);
  item = await fetchDetail(item);
  document.querySelectorAll(".card").forEach(card => card.classList.toggle("selected", Number(card.dataset.id) === Number(id)));
  const type = typeInfo(item), photo = photoFor(item);
@@ -480,6 +488,31 @@ async function openDetail(id){
    <button class="report" type="button" onclick="reportListing(${item.id})">Shikoyat qilish</button>
   </div>`;
  document.getElementById("detailDrawer").classList.add("open");
+}
+async function toggleFavorite(event, id){
+ event.stopPropagation();
+ const item = allListings.find(entry => Number(entry.id) === Number(id));
+ if(!item) return;
+ const nextState = !item.is_favorite;
+ item.is_favorite = nextState;
+ render();
+ try{
+  const response = await fetch(`/api/favorites/${id}`, { method: nextState ? "POST" : "DELETE" });
+  if(response.status === 401) throw new Error("auth");
+  if(!response.ok) throw new Error("favorite");
+ }catch(e){
+  item.is_favorite = !nextState;
+  render();
+  alert("Izbrannoe uchun Telegram orqali kirish kerak.");
+ }
+}
+async function markViewed(id){
+ const item = allListings.find(entry => Number(entry.id) === Number(id));
+ if(item && !item.viewed_at) {
+  item.viewed_at = new Date().toISOString();
+  render();
+ }
+ try{ await fetch(`/api/listings/${id}/view`, { method:"POST" }); }catch(e){}
 }
 function closeDetail(){ document.getElementById("detailDrawer").classList.remove("open"); }
 function toggleResultsSheet(){
@@ -607,3 +640,4 @@ loadListings();
 </script>
 </body>
 </html>
+

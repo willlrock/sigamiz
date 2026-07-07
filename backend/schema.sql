@@ -49,3 +49,46 @@ CREATE TABLE IF NOT EXISTS banned_users (
  reason TEXT,
  banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS users (
+ telegram_user_id INTEGER PRIMARY KEY,
+ telegram_username TEXT,
+ first_name TEXT,
+ last_name TEXT,
+ photo_url TEXT,
+ bot_started_at DATETIME,
+ created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+ last_seen_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS favorites (
+ telegram_user_id INTEGER NOT NULL,
+ listing_id INTEGER NOT NULL,
+ created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY (telegram_user_id, listing_id),
+ FOREIGN KEY (listing_id) REFERENCES listings (id)
+);
+
+CREATE TABLE IF NOT EXISTS listing_views (
+ telegram_user_id INTEGER NOT NULL,
+ listing_id INTEGER NOT NULL,
+ viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY (telegram_user_id, listing_id),
+ FOREIGN KEY (listing_id) REFERENCES listings (id)
+);
+
+CREATE TABLE IF NOT EXISTS search_preferences (
+ telegram_user_id INTEGER PRIMARY KEY,
+ price_min INTEGER,
+ price_max INTEGER,
+ districts TEXT,
+ housing_type TEXT,
+ room_count INTEGER,
+ university TEXT,
+ has_wifi BOOLEAN DEFAULT 0,
+ has_ac BOOLEAN DEFAULT 0,
+ has_washing_machine BOOLEAN DEFAULT 0,
+ no_landlord_in_yard BOOLEAN DEFAULT 0,
+ near_metro BOOLEAN DEFAULT 0,
+ updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

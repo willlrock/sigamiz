@@ -264,6 +264,41 @@ def is_banned(user_id):
     return res is not None
 
 
+def mark_bot_started(user):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            telegram_user_id INTEGER PRIMARY KEY,
+            telegram_username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            photo_url TEXT,
+            bot_started_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at DATETIME
+        )
+    """)
+    cursor.execute(
+        """
+        INSERT INTO users (
+            telegram_user_id, telegram_username, first_name, last_name,
+            bot_started_at, created_at, last_seen_at
+        )
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+        ON CONFLICT(telegram_user_id) DO UPDATE SET
+            telegram_username = excluded.telegram_username,
+            first_name = excluded.first_name,
+            last_name = excluded.last_name,
+            bot_started_at = COALESCE(users.bot_started_at, excluded.bot_started_at),
+            last_seen_at = excluded.last_seen_at
+        """,
+        (user.id, user.username, user.first_name, user.last_name),
+    )
+    conn.commit()
+    conn.close()
+
+
 def is_admin_chat(message):
     if not ADMIN_CHAT_ID:
         return False
@@ -313,6 +348,7 @@ def cancel_flow(user_id, chat_id, text="Bekor qilindi."):
 
 @bot.message_handler(commands=["start"])
 def send_welcome(message):
+    mark_bot_started(message.from_user)
     text = (
         "Salom! Sigamiz botiga xush kelibsiz.\n\n"
         "Bu yerda siz xonadosh topish uchun e'lon joylashtirishingiz yoki mavjud uylarni qidirishingiz mumkin."

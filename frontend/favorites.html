@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Izbrannoe - Sigamiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--surface:#FBFDF8;--surface-low:#F3F4F0;--surface-container:#F2F4EF;--primary:#006A3A;--text:#191C1A;--muted:#3D4A3F;--outline:#E1E3E1;--tertiary:#D6E7DD;--danger:#BA1A1A;--pill:999px;--shadow:0 18px 42px -26px rgba(25,28,26,.35)}
+*{box-sizing:border-box}body{margin:0;font-family:"Plus Jakarta Sans",sans-serif;background:var(--surface);color:var(--text)}a{text-decoration:none;color:inherit}button{font:inherit}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(251,253,248,.86);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline)}
+.nav-inner{max-width:1180px;margin:0 auto;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{font-size:26px;font-weight:900;color:var(--primary)}.nav{display:flex;gap:22px;color:var(--muted);font-weight:700}.nav a.active{color:var(--primary)}.tg{border:0;border-radius:var(--pill);background:var(--primary);color:#fff;padding:11px 18px;font-weight:800}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 16px 64px}.head{display:flex;align-items:end;justify-content:space-between;gap:18px;margin:22px 0 22px}.head h1{font-size:38px;line-height:1.1;margin:0}.head p{margin:8px 0 0;color:var(--muted)}
+.notice{display:none;background:#fff;border:1px solid var(--outline);border-radius:20px;padding:18px;box-shadow:var(--shadow);color:var(--muted);margin-bottom:18px}.notice button{margin-top:12px;border:0;border-radius:var(--pill);background:var(--primary);color:#fff;padding:10px 14px;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px;margin-bottom:24px}.card{background:#fff;border:1px solid var(--outline);border-radius:24px;overflow:hidden;box-shadow:var(--shadow)}.media{height:150px;background:var(--surface-container);display:grid;place-items:center;color:var(--muted);overflow:hidden}.media img{width:100%;height:100%;object-fit:cover}.body{padding:16px}.price{font-size:22px;font-weight:900;color:var(--primary)}.title{font-size:17px;font-weight:900;margin:8px 0}.meta{color:var(--muted);font-size:13px;line-height:1.45}.remove{margin-top:14px;border:1px solid var(--outline);background:#fff;color:var(--danger);border-radius:var(--pill);padding:9px 12px;font-weight:800}
+.compare{background:#fff;border:1px solid var(--outline);border-radius:24px;box-shadow:var(--shadow);overflow:auto}.compare table{width:100%;border-collapse:collapse;min-width:760px}.compare th,.compare td{padding:14px 16px;border-bottom:1px solid var(--outline);text-align:left;vertical-align:top}.compare th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.compare td:first-child{font-weight:900;color:var(--primary);white-space:nowrap}.tag{display:inline-flex;margin:2px;border-radius:var(--pill);padding:5px 8px;background:var(--tertiary);font-size:12px;font-weight:800;color:#3B4A43}
+@media(max-width:760px){.nav{display:none}.head{display:block}.head h1{font-size:32px}.tg{padding:10px 14px}}
+</style>
+</head>
+<body>
+<nav class="topbar"><div class="nav-inner"><a class="brand" href="/">Sigamiz</a><div class="nav"><a href="/xarita">Map</a><a class="active" href="/favorites">Izbrannoe</a><a href="/about">About</a></div><button class="tg" id="loginBtn" type="button">Telegram</button></div></nav>
+<main class="wrap">
+ <section class="head">
+ <div><h1>Izbrannoe</h1><p>Saqlangan kvartiralarni narx, tuman va sharoitlar bo'yicha solishtiring.</p></div>
+ </section>
+ <div class="notice" id="notice"></div>
+ <div id="telegramLogin"></div>
+ <section class="grid" id="cards"></section>
+ <section class="compare" id="compare"></section>
+</main>
+<script>
+const amenityLabels = {has_wifi:"Wi-Fi",has_ac:"Konditsioner",has_washing_machine:"Kir yuvish",no_landlord_in_yard:"Xo'jayinsiz",near_metro:"Metro"};
+const universityCoords = {
+ "TATU":[41.3406,69.2868],
+ "WIUT":[41.3137,69.2461],
+ "INHA":[41.3381,69.3362],
+ "O'zMU":[41.3515,69.2064],
+ "OZMU":[41.3515,69.2064],
+ "TMI":[41.3182,69.2476],
+ "TDIU":[41.3097,69.2805],
+ "ToshPMI":[41.3243,69.2954],
+ "Toshkent davlat yuridik universiteti":[41.3154,69.2793]
+};
+function formatPrice(value){return new Intl.NumberFormat("ru-RU").format(Number(value||0))+" so'm";}
+function photoFor(item){return item.photos&&item.photos.length?item.photos[0]:"";}
+function titleFor(item){return [item.district,item.university].filter(Boolean).join(", ")||"Toshkent";}
+function tagsFor(item){return Object.keys(amenityLabels).filter(key=>item[key]).map(key=>`<span class="tag">${amenityLabels[key]}</span>`).join("")||"-";}
+function distanceKm(fromLat, fromLng, toLat, toLng){
+ const earthKm = 6371;
+ const toRad = value => value * Math.PI / 180;
+ const dLat = toRad(toLat - fromLat);
+ const dLng = toRad(toLng - fromLng);
+ const a = Math.sin(dLat/2) ** 2 + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng/2) ** 2;
+ return earthKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function distanceLabel(item){
+ const point = universityCoords[item.university];
+ const lat = Number(item.lat), lng = Number(item.lng);
+ if(point && Number.isFinite(lat) && Number.isFinite(lng)){
+  return `${item.university}: ${distanceKm(lat,lng,point[0],point[1]).toFixed(1)} km`;
+ }
+ return item.university || "-";
+}
+async function loadMe(){
+ const res = await fetch("/api/me");
+ const data = await res.json();
+ document.getElementById("loginBtn").textContent = data.user ? (data.user.telegram_username ? `@${data.user.telegram_username}` : "Telegram") : "Telegram orqali kirish";
+ return data.user;
+}
+async function telegramAuth(user){
+ const res = await fetch("/api/auth/telegram", {
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify(user)
+ });
+ if(!res.ok) throw new Error("auth");
+ await loadMe();
+ await loadFavorites();
+}
+async function mountTelegramLogin(){
+ const config = await fetch("/api/config").then(res=>res.json()).catch(()=>({}));
+ const target = document.getElementById("telegramLogin");
+ if(config.bot_username){
+  window.onTelegramAuth = telegramAuth;
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://telegram.org/js/telegram-widget.js?22";
+  script.dataset.telegramLogin = config.bot_username;
+  script.dataset.size = "large";
+  script.dataset.userpic = "false";
+  script.dataset.requestAccess = "write";
+  script.dataset.onauth = "onTelegramAuth(user)";
+  target.appendChild(script);
+ }else{
+  document.getElementById("loginBtn").onclick = async () => {
+   await telegramAuth({id:777000, username:"dev_user", first_name:"Dev"});
+  };
+ }
+}
+async function loadFavorites(){
+ const notice = document.getElementById("notice");
+ try{
+  const res = await fetch("/api/favorites");
+  if(res.status===401){
+   notice.style.display="block";
+   notice.innerHTML="Izbrannoe va solishtirish uchun Telegram orqali kirish kerak.<br><button type=\"button\" onclick=\"document.getElementById('loginBtn').click()\">Telegram orqali kirish</button>";
+   render([]);
+   return;
+  }
+  if(!res.ok) throw new Error("favorites");
+  render(await res.json());
+ }catch(e){
+  notice.style.display="block";
+  notice.textContent="Izbrannoe yuklashda xatolik yuz berdi.";
+ }
+}
+async function removeFavorite(id){
+ await fetch(`/api/favorites/${id}`,{method:"DELETE"});
+ loadFavorites();
+}
+function render(items){
+ const cards = document.getElementById("cards");
+ const compare = document.getElementById("compare");
+ if(!items.length){
+  cards.innerHTML="";
+  compare.innerHTML="";
+  return;
+ }
+ cards.innerHTML = items.map(item => {
+  const photo = photoFor(item);
+  return `<article class="card"><div class="media">${photo?`<img src="${photo}" alt="Xona rasmi">`:"Rasm yo'q"}</div><div class="body"><div class="price">${formatPrice(item.price)}</div><div class="title">${titleFor(item)}</div><div class="meta">${item.housing_type||"-"} &middot; ${item.room_count||"-"} xona</div><button class="remove" type="button" onclick="removeFavorite(${item.id})">Olib tashlash</button></div></article>`;
+ }).join("");
+ compare.innerHTML = `<table><thead><tr><th>Mezon</th>${items.map(item=>`<th>${titleFor(item)}</th>`).join("")}</tr></thead><tbody>
+  <tr><td>Narx</td>${items.map(item=>`<td>${formatPrice(item.price)}</td>`).join("")}</tr>
+  <tr><td>Tuman</td>${items.map(item=>`<td>${item.district||"-"}</td>`).join("")}</tr>
+  <tr><td>Universitet / masofa</td>${items.map(item=>`<td>${distanceLabel(item)}</td>`).join("")}</tr>
+  <tr><td>Xonalar</td>${items.map(item=>`<td>${item.room_count||"-"}</td>`).join("")}</tr>
+  <tr><td>Uy turi</td>${items.map(item=>`<td>${item.housing_type||"-"}</td>`).join("")}</tr>
+  <tr><td>Qulayliklar</td>${items.map(item=>`<td>${tagsFor(item)}</td>`).join("")}</tr>
+ </tbody></table>`;
+}
+loadMe();
+mountTelegramLogin();
+loadFavorites();
+</script>
+</body>
+</html>
+
