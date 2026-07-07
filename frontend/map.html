@@ -35,8 +35,19 @@ a{color:inherit;text-decoration:none}
 .actions{display:flex;align-items:center;gap:24px}
 .add-btn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:0;border-radius:var(--pill);padding:12px 24px;font-weight:800;box-shadow:var(--shadow-1)}
 .add-btn:hover{background:var(--primary-container)}
+.account-wrap{position:relative}
 .icon-btn{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:var(--primary);display:grid;place-items:center;cursor:pointer}
 .icon-btn:hover{background:var(--surface-high)}
+.account-menu{position:absolute;right:0;top:54px;width:280px;background:var(--surface);border:1px solid var(--outline);border-radius:18px;box-shadow:var(--shadow-3);padding:12px;display:none;z-index:1300}
+.account-menu.open{display:grid;gap:10px}
+.account-user{display:grid;gap:2px;border-bottom:1px solid var(--outline);padding:4px 4px 10px;color:var(--muted);font-size:12px}
+.account-user b{font-size:14px;color:var(--text)}
+.account-link{display:flex;align-items:center;gap:9px;border-radius:12px;padding:10px 11px;color:var(--muted);font-weight:800}
+.account-link:hover{background:var(--surface-container);color:var(--primary)}
+.telegram-login-slot{display:grid;place-items:start;padding:4px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,18px);z-index:2500;width:min(420px,calc(100vw - 32px));background:var(--text);color:#fff;border-radius:18px;padding:14px 16px;box-shadow:var(--shadow-3);opacity:0;pointer-events:none;transition:.22s ease;font-size:14px;line-height:1.45}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast a{color:#CFF7DC;font-weight:900;text-decoration:underline}
 .layout{height:100vh;padding-top:80px;position:relative;overflow:hidden}
 .map-wrap{position:absolute;inset:80px 0 0;background:var(--surface-low)}
 #map{position:absolute;inset:0;z-index:0}
@@ -186,13 +197,20 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
   <a class="brand" href="/">Sigamiz</a>
   <nav class="nav">
    <a class="active" href="/xarita">Map</a>
-   <a href="/favorites">Izbrannoe</a>
    <a href="/about">About</a>
    <a href="/#how-it-works">How it works</a>
   </nav>
   <div class="actions">
    <a class="add-btn" href="/publish"><span class="material-symbols-outlined" data-fallback="+">add</span>Add Listing</a>
-   <a class="icon-btn" aria-label="Izbrannoe" href="/favorites"><span class="material-symbols-outlined" data-fallback="@">account_circle</span></a>
+   <div class="account-wrap">
+    <button class="icon-btn" id="accountBtn" type="button" aria-label="Akkaunt" aria-expanded="false"><span class="material-symbols-outlined" data-fallback="@">account_circle</span></button>
+    <div class="account-menu" id="accountMenu">
+     <div class="account-user" id="accountUser"><b>Telegram orqali kiring</b><span>Izbrannoe va saqlash uchun kerak.</span></div>
+     <div class="telegram-login-slot" id="mapTelegramLogin"></div>
+     <a class="account-link" href="/favorites"><span class="material-symbols-outlined" data-fallback="@">favorite_border</span>Izbrannoe</a>
+     <a class="account-link" href="/publish"><span class="material-symbols-outlined" data-fallback="+">add</span>E'lon joylash</a>
+    </div>
+   </div>
   </div>
  </div>
 </header>
@@ -253,6 +271,7 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
   <div class="detail-body" id="detailBody"></div>
  </article>
 </div>
+<div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -265,6 +284,7 @@ const DEMO_LISTINGS = [
 let map, allListings = [], markers = [], activeType = "offer", query = "";
 let sortMode = "default"; // "default" | "price_asc" | "price_desc"
 let priceMin = null, priceMax = null, priceReloadTimer;
+let currentUser = null, toastTimer;
 const activeFilters = new Set();
 const amenityLabels = {
  has_wifi:["wifi","~","Wi-Fi"], has_ac:["ac_unit","*","Konditsioner"],
@@ -295,6 +315,13 @@ function replaceLegacyIcons(root = document){
   if(node.id) icon.id = node.id;
   node.replaceWith(icon);
  });
+}
+function showToast(html){
+ const toast = document.getElementById("toast");
+ toast.innerHTML = html;
+ toast.classList.add("show");
+ clearTimeout(toastTimer);
+ toastTimer = setTimeout(() => toast.classList.remove("show"), 5200);
 }
 function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " so'm"; }
 function compactPrice(value){
@@ -380,6 +407,38 @@ async function loadListings(){
  }catch(e){ console.error("Failed to load listings", e); allListings = DEMO_LISTINGS; }
  allListings = allListings.filter(item => item.listing_type === "offer");
  render();
+}
+async function telegramAuth(user){
+ const res = await fetch("/api/auth/telegram", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(user)});
+ if(!res.ok) throw new Error("auth");
+ await loadMe();
+ await loadListings();
+ showToast("Telegram orqali kirdingiz.");
+}
+async function loadMe(){
+ const data = await fetch("/api/me").then(res => res.json()).catch(() => ({user:null}));
+ currentUser = data.user;
+ const userBox = document.getElementById("accountUser");
+ if(currentUser){
+  userBox.innerHTML = `<b>${escapeHtml(currentUser.first_name || "Telegram user")}</b><span>${currentUser.telegram_username ? `@${escapeHtml(currentUser.telegram_username)}` : "Telegram ulangan"}</span>`;
+ }else{
+  userBox.innerHTML = "<b>Telegram orqali kiring</b><span>Izbrannoe va saqlash uchun kerak.</span>";
+ }
+ return currentUser;
+}
+async function mountTelegramLogin(){
+ const config = await fetch("/api/config").then(res => res.json()).catch(() => ({}));
+ if(!config.bot_username) return;
+ window.onMapTelegramAuth = telegramAuth;
+ const script = document.createElement("script");
+ script.async = true;
+ script.src = "https://telegram.org/js/telegram-widget.js?22";
+ script.dataset.telegramLogin = config.bot_username;
+ script.dataset.size = "large";
+ script.dataset.userpic = "false";
+ script.dataset.requestAccess = "write";
+ script.dataset.onauth = "onMapTelegramAuth(user)";
+ document.getElementById("mapTelegramLogin").appendChild(script);
 }
 function applySort(items){
  if(sortMode === "price_asc") return [...items].sort((a,b) => Number(a.price||0) - Number(b.price||0));
@@ -499,10 +558,13 @@ async function toggleFavorite(event, id){
   const response = await fetch(`/api/favorites/${id}`, { method: nextState ? "POST" : "DELETE" });
   if(response.status === 401) throw new Error("auth");
   if(!response.ok) throw new Error("favorite");
+  if(nextState) showToast(`E'lon izbrannoega qo'shildi. Bir nechta e'lonni saqlab, <a href="/favorites">Izbrannoeda solishtirishingiz mumkin</a>.`);
+  else showToast("E'lon izbrannoedan olib tashlandi.");
  }catch(e){
   item.is_favorite = !nextState;
   render();
-  alert("Izbrannoe uchun Telegram orqali kirish kerak.");
+  openAccountMenu();
+  showToast("Izbrannoe uchun avval Telegram orqali kiring.");
  }
 }
 async function markViewed(id){
@@ -630,11 +692,27 @@ document.getElementById("priceToggle").addEventListener("click", () => {
 });
 document.getElementById("priceChip").addEventListener("focusout", () => setTimeout(updatePriceChip, 80));
 document.getElementById("detailDrawer").addEventListener("click", event => { if(event.target.id === "detailDrawer") closeDetail(); });
+function openAccountMenu(){
+ document.getElementById("accountMenu").classList.add("open");
+ document.getElementById("accountBtn").setAttribute("aria-expanded","true");
+}
+function closeAccountMenu(){
+ document.getElementById("accountMenu").classList.remove("open");
+ document.getElementById("accountBtn").setAttribute("aria-expanded","false");
+}
+document.getElementById("accountBtn").addEventListener("click", event => {
+ event.stopPropagation();
+ document.getElementById("accountMenu").classList.contains("open") ? closeAccountMenu() : openAccountMenu();
+});
+document.getElementById("accountMenu").addEventListener("click", event => event.stopPropagation());
+document.addEventListener("click", closeAccountMenu);
 replaceLegacyIcons();
 setActiveType("offer", false);
 initMap();
 initViewFromUrl();
 updatePriceChip();
+loadMe();
+mountTelegramLogin();
 loadListings();
 </script>
 </body>

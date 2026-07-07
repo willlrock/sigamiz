@@ -27,7 +27,7 @@
  <section class="auth-panel" id="authPanel">
   <h2>Telegram orqali tasdiqlang</h2>
   <p>Bu qadam har bir kvartira ortida haqiqiy Telegram akkaunt borligini tekshiradi. Maqsad: bir akkaunt bitta kvartira joylaydi, dublikat va makler e'lonlari kamayadi.</p>
-  <div class="auth-actions"><div id="telegramLogin"></div><button class="login" id="botLoginBtn" type="button">Bot orqali kirish</button></div>
+  <div class="auth-actions"><div id="telegramLogin"></div></div>
  </section>
  <section class="layout">
   <form class="panel form locked" id="listingForm">
@@ -121,7 +121,6 @@ async function mountTelegramLogin(){
  const botLink=document.getElementById("botLink");
  if(config.bot_username) botLink.href=`https://t.me/${config.bot_username}?start=start`;
  document.getElementById("loginBtn").onclick=()=>document.getElementById("telegramLogin").scrollIntoView({behavior:"smooth",block:"center"});
- document.getElementById("botLoginBtn").onclick=startBotLogin;
  if(config.bot_username){
   window.onTelegramAuth=telegramAuth;
   const script=document.createElement("script");
