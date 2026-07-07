@@ -27,7 +27,7 @@
  <section class="auth-panel" id="authPanel">
   <h2>Telegram orqali tasdiqlang</h2>
   <p>Bu qadam har bir kvartira ortida haqiqiy Telegram akkaunt borligini tekshiradi. Maqsad: bir akkaunt bitta kvartira joylaydi, dublikat va makler e'lonlari kamayadi.</p>
-  <div class="auth-actions"><div id="telegramLogin"></div><button class="login" id="authScrollBtn" type="button">Telegram orqali kirish</button></div>
+  <div class="auth-actions"><div id="telegramLogin"></div><button class="login" id="botLoginBtn" type="button">Bot orqali kirish</button></div>
  </section>
  <section class="layout">
   <form class="panel form locked" id="listingForm">
@@ -120,17 +120,14 @@ async function mountTelegramLogin(){
  const config=await fetch("/api/config").then(res=>res.json()).catch(()=>({}));
  const botLink=document.getElementById("botLink");
  if(config.bot_username) botLink.href=`https://t.me/${config.bot_username}?start=start`;
- document.getElementById("loginBtn").onclick=startBotLogin;
- document.getElementById("authScrollBtn").onclick=startBotLogin;
+ document.getElementById("loginBtn").onclick=()=>document.getElementById("telegramLogin").scrollIntoView({behavior:"smooth",block:"center"});
+ document.getElementById("botLoginBtn").onclick=startBotLogin;
  if(config.bot_username){
   window.onTelegramAuth=telegramAuth;
   const script=document.createElement("script");
   script.async=true;script.src="https://telegram.org/js/telegram-widget.js?22";
  script.dataset.telegramLogin=config.bot_username;script.dataset.size="large";script.dataset.userpic="false";script.dataset.requestAccess="write";script.dataset.onauth="onTelegramAuth(user)";
   document.getElementById("telegramLogin").appendChild(script);
- }else{
-  document.getElementById("loginBtn").onclick=()=>telegramAuth({id:777000,username:"dev_user",first_name:"Dev"});
-  document.getElementById("authScrollBtn").onclick=()=>telegramAuth({id:777000,username:"dev_user",first_name:"Dev"});
  }
 }
 async function loadMe(){

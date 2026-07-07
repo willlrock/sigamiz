@@ -22,7 +22,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or "klapa_net_bot").lstrip("@")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 SITE_URL = os.getenv("SITE_URL", "https://klapa.net").rstrip("/")
-SESSION_SECRET = os.getenv("SESSION_SECRET") or BOT_TOKEN or secrets.token_hex(32)
+SESSION_SECRET = os.getenv("SESSION_SECRET") or secrets.token_hex(32)
 
 app = FastAPI()
 
@@ -571,17 +571,19 @@ def get_listing_detail(listing_id: int, request: Request):
     return data
 
 def validate_telegram_login(payload):
-    if not BOT_TOKEN or "fake_token_for_testing" in BOT_TOKEN:
-        dev_user_id = payload.get("id")
-        if not dev_user_id:
-            raise HTTPException(status_code=400, detail="Telegram id is required")
-        return payload
+    if not BOT_TOKEN:
+        raise HTTPException(status_code=503, detail="Telegram auth is not configured")
 
     auth_hash = payload.get("hash")
     if not auth_hash:
         raise HTTPException(status_code=400, detail="Telegram hash is required")
-    auth_date = int(payload.get("auth_date", 0) or 0)
-    if auth_date and time.time() - auth_date > 86400:
+    try:
+        auth_date = int(payload.get("auth_date", 0) or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Telegram auth_date is invalid")
+    if not auth_date:
+        raise HTTPException(status_code=400, detail="Telegram auth_date is required")
+    if time.time() - auth_date > 86400:
         raise HTTPException(status_code=401, detail="Telegram auth expired")
     check_parts = []
     for key in sorted(payload):

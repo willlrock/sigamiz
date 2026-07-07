@@ -27,6 +27,7 @@
  </section>
  <div class="notice" id="notice"></div>
  <div id="telegramLogin"></div>
+ <button class="tg" id="botLoginBtn" type="button">Bot orqali kirish</button>
  <section class="grid" id="cards"></section>
  <section class="compare" id="compare"></section>
 </main>
@@ -125,7 +126,8 @@ async function startBotLogin(){
 async function mountTelegramLogin(){
  const config = await fetch("/api/config").then(res=>res.json()).catch(()=>({}));
  const target = document.getElementById("telegramLogin");
- document.getElementById("loginBtn").onclick = startBotLogin;
+ document.getElementById("loginBtn").onclick = () => target.scrollIntoView({behavior:"smooth", block:"center"});
+ document.getElementById("botLoginBtn").onclick = startBotLogin;
  if(config.bot_username){
   window.onTelegramAuth = telegramAuth;
   const script = document.createElement("script");
@@ -137,10 +139,6 @@ async function mountTelegramLogin(){
  script.dataset.requestAccess = "write";
   script.dataset.onauth = "onTelegramAuth(user)";
   target.appendChild(script);
- }else{
-  document.getElementById("loginBtn").onclick = async () => {
-   await telegramAuth({id:777000, username:"dev_user", first_name:"Dev"});
-  };
  }
 }
 async function loadFavorites(){
