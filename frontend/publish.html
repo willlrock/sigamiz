@@ -121,12 +121,22 @@ async function mountTelegramLogin(){
  const botLink=document.getElementById("botLink");
  if(config.bot_username) botLink.href=`https://t.me/${config.bot_username}?start=start`;
  document.getElementById("loginBtn").onclick=()=>document.getElementById("telegramLogin").scrollIntoView({behavior:"smooth",block:"center"});
- if(config.bot_username){
+ if(config.telegram_client_id){
   window.onTelegramAuth=telegramAuth;
+  const button=document.createElement("button");
+  button.className="tg-auth-button";
+  button.dataset.style="shine";
+  button.type="button";
+  button.textContent="Sign In with Telegram";
   const script=document.createElement("script");
-  script.async=true;script.src="https://telegram.org/js/telegram-widget.js?22";
- script.dataset.telegramLogin=config.bot_username;script.dataset.size="large";script.dataset.userpic="false";script.dataset.requestAccess="write";script.dataset.onauth="onTelegramAuth(user)";
-  document.getElementById("telegramLogin").appendChild(script);
+  script.async=true;script.src="https://oauth.telegram.org/js/telegram-login.js?5";
+  script.dataset.clientId=config.telegram_client_id;
+  script.dataset.onauth="onTelegramAuth(data)";
+  script.dataset.requestAccess="write";
+  const target=document.getElementById("telegramLogin");
+  target.innerHTML="";
+  target.appendChild(button);
+  target.appendChild(script);
  }
 }
 async function loadMe(){

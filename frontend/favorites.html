@@ -126,16 +126,21 @@ async function mountTelegramLogin(){
  const config = await fetch("/api/config").then(res=>res.json()).catch(()=>({}));
  const target = document.getElementById("telegramLogin");
  document.getElementById("loginBtn").onclick = () => target.scrollIntoView({behavior:"smooth", block:"center"});
- if(config.bot_username){
+ if(config.telegram_client_id){
   window.onTelegramAuth = telegramAuth;
+  const button = document.createElement("button");
+  button.className = "tg-auth-button";
+  button.dataset.style = "shine";
+  button.type = "button";
+  button.textContent = "Sign In with Telegram";
   const script = document.createElement("script");
   script.async = true;
-  script.src = "https://telegram.org/js/telegram-widget.js?22";
-  script.dataset.telegramLogin = config.bot_username;
-  script.dataset.size = "large";
-  script.dataset.userpic = "false";
- script.dataset.requestAccess = "write";
-  script.dataset.onauth = "onTelegramAuth(user)";
+  script.src = "https://oauth.telegram.org/js/telegram-login.js?5";
+  script.dataset.clientId = config.telegram_client_id;
+  script.dataset.requestAccess = "write";
+  script.dataset.onauth = "onTelegramAuth(data)";
+  target.innerHTML = "";
+  target.appendChild(button);
   target.appendChild(script);
  }
 }

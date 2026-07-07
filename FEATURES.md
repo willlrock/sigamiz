@@ -9,6 +9,7 @@ Sigamiz helps students find shared housing in Tashkent while reducing broker spa
 ## Authentication
 
 - The primary web login path uses the official Telegram Login Widget.
+- The visible login button uses `https://oauth.telegram.org/js/telegram-login.js?5` with `data-client-id`; the client id is derived from the public numeric prefix of `BOT_TOKEN` and exposed by `/api/config`.
 - `/api/auth/telegram` accepts only Telegram-signed payloads and verifies the HMAC signature with `BOT_TOKEN`.
 - Telegram `auth_date` is required and expires after 24 hours.
 - If Telegram auth is not configured, the backend fails closed instead of accepting unsigned user ids.

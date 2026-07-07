@@ -697,7 +697,12 @@ def get_me(request: Request):
 
 @app.get("/api/config")
 def get_config():
-    return {"bot_username": BOT_USERNAME}
+    telegram_client_id = None
+    if BOT_TOKEN and ":" in BOT_TOKEN:
+        token_prefix = BOT_TOKEN.split(":", 1)[0]
+        if token_prefix.isdigit():
+            telegram_client_id = token_prefix
+    return {"bot_username": BOT_USERNAME, "telegram_client_id": telegram_client_id}
 
 @app.get("/api/favorites")
 def get_favorites(request: Request):
