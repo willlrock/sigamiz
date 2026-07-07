@@ -19,7 +19,7 @@ from PIL import Image
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-BOT_USERNAME = os.getenv("BOT_USERNAME")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "klapa_net_bot").lstrip("@")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 SITE_URL = os.getenv("SITE_URL", "https://klapa.net").rstrip("/")
 SESSION_SECRET = os.getenv("SESSION_SECRET") or BOT_TOKEN or secrets.token_hex(32)
@@ -153,6 +153,15 @@ def migrate_db(cursor):
             photo_hash TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (listing_id) REFERENCES listings (id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS web_login_tokens (
+            token TEXT PRIMARY KEY,
+            telegram_user_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME
         )
     """)
     cursor.execute(
@@ -610,6 +619,64 @@ async def auth_telegram(payload: dict, response: Response):
         max_age=60 * 60 * 24 * 90,
     )
     return {"user": dict(user)}
+
+@app.post("/api/auth/telegram/start")
+async def start_telegram_bot_login():
+    if not BOT_USERNAME:
+        raise HTTPException(status_code=503, detail="BOT_USERNAME is not configured")
+    token = secrets.token_urlsafe(18)
+    conn = get_db()
+    conn.execute(
+        """
+        INSERT INTO web_login_tokens (token, expires_at)
+        VALUES (?, datetime('now', '+10 minutes'))
+        """,
+        (token,),
+    )
+    conn.commit()
+    conn.close()
+    return {
+        "token": token,
+        "bot_url": f"https://t.me/{BOT_USERNAME}?start=web_{token}",
+    }
+
+@app.post("/api/auth/telegram/complete")
+async def complete_telegram_bot_login(payload: dict, response: Response):
+    token = (payload.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="token is required")
+
+    conn = get_db()
+    cursor = conn.cursor()
+    row = cursor.execute(
+        """
+        SELECT * FROM web_login_tokens
+        WHERE token = ? AND expires_at > datetime('now') AND used_at IS NULL
+        """,
+        (token,),
+    ).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Login token expired")
+    if not row["telegram_user_id"]:
+        conn.close()
+        return {"ok": False, "pending": True}
+
+    user = cursor.execute("SELECT * FROM users WHERE telegram_user_id = ?", (row["telegram_user_id"],)).fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Telegram user not found")
+    cursor.execute("UPDATE web_login_tokens SET used_at = datetime('now') WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+    response.set_cookie(
+        "sigamiz_session",
+        make_session_cookie(row["telegram_user_id"]),
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 90,
+    )
+    return {"ok": True, "user": dict(user)}
 
 @app.post("/api/logout")
 async def logout(response: Response):

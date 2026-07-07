@@ -63,6 +63,7 @@
 let currentUser = null;
 let selectedPhotos = [];
 let selectedPhotoLoad = Promise.resolve();
+let botLoginPollTimer = null;
 function showNotice(text,type=""){const el=document.getElementById("notice");el.className=`notice ${type}`;el.style.display="block";el.textContent=text;}
 function hideNotice(){document.getElementById("notice").style.display="none";}
 function formatPrice(value){return new Intl.NumberFormat("ru-RU").format(Number(value||0))+" so'm";}
@@ -80,10 +81,47 @@ async function telegramAuth(user){
  await loadMe();
  await loadMyListings();
 }
+async function startBotLogin(){
+ hideNotice();
+ const popup=window.open("about:blank","_blank");
+ try{
+  const session=await fetch("/api/auth/telegram/start",{method:"POST"}).then(res=>{
+   if(!res.ok) throw new Error("Telegram bot sozlanmagan.");
+   return res.json();
+  });
+  showNotice("Telegram ochildi. Botda Start bosing, keyin bu sahifa avtomatik kiradi.","warn");
+  if(popup){popup.opener=null;popup.location.href=session.bot_url;}
+  else window.location.href=session.bot_url;
+  clearInterval(botLoginPollTimer);
+  botLoginPollTimer=setInterval(async()=>{
+   try{
+    const res=await fetch("/api/auth/telegram/complete",{
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({token:session.token})
+    });
+    if(res.status===404){clearInterval(botLoginPollTimer);showNotice("Kirish havolasi eskirdi. Telegram orqali kirishni qayta bosing.","error");return;}
+    const data=await res.json().catch(()=>({}));
+    if(data.ok){
+     clearInterval(botLoginPollTimer);
+     showNotice("Telegram orqali kirdingiz.","ok");
+     await loadMe();
+     await loadMyListings();
+    }
+   }catch(e){}
+  },1800);
+  setTimeout(()=>clearInterval(botLoginPollTimer),10*60*1000);
+ }catch(e){
+  if(popup) popup.close();
+  showNotice(String(e.message||e),"error");
+ }
+}
 async function mountTelegramLogin(){
  const config=await fetch("/api/config").then(res=>res.json()).catch(()=>({}));
  const botLink=document.getElementById("botLink");
  if(config.bot_username) botLink.href=`https://t.me/${config.bot_username}?start=start`;
+ document.getElementById("loginBtn").onclick=startBotLogin;
+ document.getElementById("authScrollBtn").onclick=startBotLogin;
  if(config.bot_username){
   window.onTelegramAuth=telegramAuth;
   const script=document.createElement("script");
@@ -94,8 +132,6 @@ async function mountTelegramLogin(){
   document.getElementById("loginBtn").onclick=()=>telegramAuth({id:777000,username:"dev_user",first_name:"Dev"});
   document.getElementById("authScrollBtn").onclick=()=>telegramAuth({id:777000,username:"dev_user",first_name:"Dev"});
  }
- document.getElementById("loginBtn").onclick=document.getElementById("loginBtn").onclick||(()=>document.getElementById("authPanel").scrollIntoView({behavior:"smooth",block:"center"}));
- document.getElementById("authScrollBtn").onclick=document.getElementById("authScrollBtn").onclick||(()=>document.getElementById("telegramLogin").scrollIntoView({behavior:"smooth",block:"center"}));
 }
 async function loadMe(){
  const data=await fetch("/api/me").then(res=>res.json());

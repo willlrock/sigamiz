@@ -27,6 +27,7 @@ SEED_DEMO_DATA=false
 ```
 
 `ADMIN_CHAT_ID` can contain one chat id or a comma-separated list.
+`BOT_USERNAME` defaults to `klapa_net_bot`; set it explicitly when deploying another bot.
 
 ## Local Run
 

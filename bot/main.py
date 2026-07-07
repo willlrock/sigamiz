@@ -299,6 +299,38 @@ def mark_bot_started(user):
     conn.close()
 
 
+def ensure_web_login_tokens_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS web_login_tokens (
+            token TEXT PRIMARY KEY,
+            telegram_user_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME
+        )
+    """)
+
+
+def confirm_web_login_token(token, user):
+    if not token:
+        return False
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    ensure_web_login_tokens_table(cursor)
+    cursor.execute(
+        """
+        UPDATE web_login_tokens
+        SET telegram_user_id = ?
+        WHERE token = ? AND expires_at > datetime('now') AND used_at IS NULL
+        """,
+        (user.id, token),
+    )
+    ok = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    return ok
+
+
 def ensure_search_preferences_table(cursor):
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS search_preferences (
@@ -466,6 +498,17 @@ def cancel_flow(user_id, chat_id, text="Bekor qilindi."):
 @bot.message_handler(commands=["start"])
 def send_welcome(message):
     mark_bot_started(message.from_user)
+    parts = (message.text or "").split(maxsplit=1)
+    payload = parts[1].strip() if len(parts) > 1 else ""
+    if payload.startswith("web_"):
+        if confirm_web_login_token(payload[4:], message.from_user):
+            bot.reply_to(
+                message,
+                "Telegram tasdiqlandi. Saytga qayting, sahifa bir necha soniyada sizni kiritadi.",
+            )
+            return
+        bot.reply_to(message, "Kirish havolasi eskirgan. Saytdan Telegram orqali kirishni qayta bosing.")
+        return
     text = (
         "Salom! Sigamiz botiga xush kelibsiz.\n\n"
         "Bu yerda siz xonadosh topish uchun e'lon joylashtirishingiz yoki mavjud uylarni qidirishingiz mumkin."

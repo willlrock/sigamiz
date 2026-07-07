@@ -43,6 +43,12 @@ const universityCoords = {
  "ToshPMI":[41.3243,69.2954],
  "Toshkent davlat yuridik universiteti":[41.3154,69.2793]
 };
+let botLoginPollTimer = null;
+function showNotice(text){
+ const notice = document.getElementById("notice");
+ notice.style.display = "block";
+ notice.textContent = text;
+}
 function formatPrice(value){return new Intl.NumberFormat("ru-RU").format(Number(value||0))+" so'm";}
 function photoFor(item){return item.photos&&item.photos.length?item.photos[0]:"";}
 function titleFor(item){return [item.district,item.university].filter(Boolean).join(", ")||"Toshkent";}
@@ -79,9 +85,47 @@ async function telegramAuth(user){
  await loadMe();
  await loadFavorites();
 }
+async function startBotLogin(){
+ const popup = window.open("about:blank", "_blank");
+ try{
+  const session = await fetch("/api/auth/telegram/start", {method:"POST"}).then(res => {
+   if(!res.ok) throw new Error("Telegram bot sozlanmagan.");
+   return res.json();
+  });
+  showNotice("Telegram ochildi. Botda Start bosing, keyin bu sahifa avtomatik kiradi.");
+  if(popup){popup.opener = null; popup.location.href = session.bot_url;}
+  else window.location.href = session.bot_url;
+  clearInterval(botLoginPollTimer);
+  botLoginPollTimer = setInterval(async () => {
+   try{
+    const res = await fetch("/api/auth/telegram/complete", {
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({token:session.token})
+    });
+    if(res.status === 404){
+     clearInterval(botLoginPollTimer);
+     showNotice("Kirish havolasi eskirdi. Telegram orqali kirishni qayta bosing.");
+     return;
+    }
+    const data = await res.json().catch(() => ({}));
+    if(data.ok){
+     clearInterval(botLoginPollTimer);
+     await loadMe();
+     await loadFavorites();
+    }
+   }catch(e){}
+  }, 1800);
+  setTimeout(() => clearInterval(botLoginPollTimer), 10 * 60 * 1000);
+ }catch(e){
+  if(popup) popup.close();
+  showNotice(String(e.message || e));
+ }
+}
 async function mountTelegramLogin(){
  const config = await fetch("/api/config").then(res=>res.json()).catch(()=>({}));
  const target = document.getElementById("telegramLogin");
+ document.getElementById("loginBtn").onclick = startBotLogin;
  if(config.bot_username){
   window.onTelegramAuth = telegramAuth;
   const script = document.createElement("script");
@@ -93,7 +137,6 @@ async function mountTelegramLogin(){
  script.dataset.requestAccess = "write";
   script.dataset.onauth = "onTelegramAuth(user)";
   target.appendChild(script);
-  document.getElementById("loginBtn").onclick = () => target.scrollIntoView({behavior:"smooth", block:"center"});
  }else{
   document.getElementById("loginBtn").onclick = async () => {
    await telegramAuth({id:777000, username:"dev_user", first_name:"Dev"});
@@ -111,6 +154,7 @@ async function loadFavorites(){
    return;
   }
   if(!res.ok) throw new Error("favorites");
+  notice.style.display="none";
   render(await res.json());
  }catch(e){
   notice.style.display="block";
