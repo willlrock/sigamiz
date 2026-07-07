@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{
@@ -20,12 +19,13 @@
  --shadow-2:0 10px 15px -3px rgba(25,28,26,.12);
  --shadow-3:0 24px 50px -18px rgba(25,28,26,.28);
  --radius-lg:24px; --radius-xl:32px; --pill:999px;
+ --spring:cubic-bezier(.34,1.56,.64,1);
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:"Plus Jakarta Sans",sans-serif;background:var(--surface);color:var(--text)}
 button,input{font:inherit}
 a{color:inherit;text-decoration:none}
-.material-symbols-outlined{font-variation-settings:"FILL" 0,"wght" 500,"GRAD" 0,"opsz" 24}
+.icon{width:24px;height:24px;display:inline-block;flex:0 0 auto;fill:currentColor}
 .topbar{position:fixed;top:0;left:0;right:0;height:80px;z-index:1000;background:rgba(251,253,248,.82);backdrop-filter:blur(14px);box-shadow:var(--shadow-1);border-bottom:1px solid rgba(225,227,225,.7)}
 .topbar-inner{height:100%;max-width:1200px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:24px}
 .brand{font-size:26px;font-weight:800;color:var(--primary);letter-spacing:0}
@@ -41,16 +41,33 @@ a{color:inherit;text-decoration:none}
 .map-wrap{position:absolute;inset:80px 0 0;background:var(--surface-low)}
 #map{position:absolute;inset:0;z-index:0}
 .map-fallback{position:absolute;inset:0;background:center/cover url("https://lh3.googleusercontent.com/aida-public/AB6AXuBxnbz-z52KTOBqvw_Q59kJ8Od7qXY_UMF3PYDlnOW2alQ0gTNWV4uRoEXitzVWjIW6tPdqT2oghccjzs_C2N4guIiFcQPD5LoTslivdN0aH6opnIu9_VQvn-nfSGxuB7JWB9bLTDmjLhfsgbxWP2vOT7n8gLfzyZj2ISGWNrKbsAVK4M78XGQFULhG7EEf07KIeTvEtQEtF9g08RwYH-o5BpFqavAo4TRPx54_eFMNMKfH_h4AsgfGsgVhHFOKiV2ZN75-bT7ZhHg");filter:saturate(.92);z-index:-1}
+.map-fallback,#map{transition:height .45s var(--spring)}
 .map-tools{position:absolute;top:24px;left:24px;right:24px;max-width:540px;z-index:500;display:flex;flex-direction:column;gap:12px}
-.search-box{display:flex;align-items:center;gap:12px;background:rgba(251,253,248,.95);backdrop-filter:blur(12px);border:1px solid rgba(225,227,225,.75);border-radius:var(--pill);padding:12px 16px;box-shadow:var(--shadow-2)}
-.search-box .material-symbols-outlined{color:var(--primary)}
+.search-box{display:flex;align-items:center;gap:10px;background:rgba(251,253,248,.95);backdrop-filter:blur(12px);border:1px solid rgba(225,227,225,.75);border-radius:var(--pill);padding:8px 8px 8px 14px;box-shadow:var(--shadow-2);transition:border-radius .4s var(--spring),box-shadow .25s ease}
+.search-box .icon{color:var(--primary)}
 .search-box input{border:0;outline:0;background:transparent;width:100%;font-size:16px;color:var(--text)}
+.search-icon-btn{width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:var(--primary);display:grid;place-items:center;padding:0;cursor:text;transition:background .2s ease}
+.search-icon-btn:hover{background:var(--surface-high)}
+.search-icon-btn .icon{transition:transform .3s var(--spring)}
+body.serp-mode .search-icon-btn{cursor:pointer}
+body.serp-mode .search-icon-btn:hover .icon{transform:translateX(-2px)}
+.search-tune{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--surface-container)}
 .chip-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .chip-row::-webkit-scrollbar{display:none}
-.chip{white-space:nowrap;border:1px solid var(--outline);background:rgba(251,253,248,.9);color:var(--muted);border-radius:var(--pill);padding:10px 15px;font-size:13px;font-weight:800;box-shadow:var(--shadow-1);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-.chip:hover{border-color:var(--primary)}
-.chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
-.chip[data-type="seek"].active{background:var(--seek);border-color:var(--seek)}
+.chip[data-type="seek"]{display:none}
+.chip{min-width:44px;height:44px;white-space:nowrap;border:1px solid var(--outline);background:rgba(251,253,248,.92);color:var(--muted);border-radius:22px;padding:0 11px;font-size:13px;font-weight:800;box-shadow:var(--shadow-1);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:min-width .34s var(--spring),padding .34s var(--spring),border-radius .34s var(--spring),background .2s ease,border-color .2s ease,color .2s ease}
+.chip:hover,.chip:focus-visible{min-width:104px;border-radius:14px;border-color:var(--primary);padding:0 14px}
+.chip.active{min-width:112px;padding:0 15px;border-radius:14px;background:var(--primary);border-color:var(--primary);color:#fff}
+.chip .icon{width:18px;height:18px}
+.chip-label{max-width:0;opacity:0;overflow:hidden;text-overflow:clip;transition:max-width .34s var(--spring),opacity .2s ease}
+.chip:hover .chip-label,.chip:focus-visible .chip-label,.chip.active .chip-label{max-width:150px;opacity:1}
+.price-chip{position:relative;padding:0;cursor:default}
+.price-chip.active,.price-chip:focus-within{min-width:300px;border-radius:14px;background:var(--surface);border-color:var(--primary);color:var(--text)}
+.price-chip-toggle{height:42px;min-width:42px;border:0;border-radius:13px;background:transparent;color:inherit;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;font-weight:800;cursor:pointer}
+.price-fields{width:0;opacity:0;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:6px;transition:width .34s var(--spring),opacity .2s ease}
+.price-chip.active .price-fields,.price-chip:focus-within .price-fields{width:164px;opacity:1;margin-right:8px}
+.price-fields input{min-width:0;width:100%;border:1px solid var(--outline);border-radius:16px;background:var(--surface-container);padding:7px 9px;font-size:12px;font-weight:800;color:var(--text);outline:0}
+.price-fields input:focus{border-color:var(--primary)}
 .pin{display:flex;align-items:center;gap:6px;border:2px solid #fff;border-radius:var(--pill);padding:7px 12px;color:#fff;font-size:13px;font-weight:800;box-shadow:var(--shadow-2);position:relative}
 .pin:after{content:"";position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid currentColor;filter:drop-shadow(0 2px 1px rgba(0,0,0,.12))}
 .pin.offer{background:var(--primary);color:var(--primary)}
@@ -60,12 +77,12 @@ a{color:inherit;text-decoration:none}
 .pin.reviewing span{color:var(--muted)}
 .fab{position:absolute;right:32px;bottom:32px;z-index:510;display:inline-flex;align-items:center;gap:12px;background:var(--telegram);color:#fff;border:0;border-radius:var(--pill);padding:16px 28px;font-size:15px;font-weight:800;box-shadow:0 18px 38px -16px rgba(42,171,238,.8)}
 .fab:hover{background:#229ED9;transform:translateY(-1px)}
-.results{position:absolute;top:104px;right:24px;bottom:24px;width:min(456px,calc(100vw - 48px));background:rgba(251,253,248,.96);backdrop-filter:blur(16px);border:1px solid rgba(225,227,225,.82);border-radius:32px 0 0 32px;box-shadow:var(--shadow-3);display:flex;flex-direction:column;min-width:0;z-index:20;overflow:hidden;transition:transform .28s ease, opacity .2s ease}
+.results{position:absolute;top:104px;right:24px;bottom:24px;width:min(456px,calc(100vw - 48px));background:rgba(251,253,248,.96);backdrop-filter:blur(16px);border:1px solid rgba(225,227,225,.82);border-radius:32px 0 0 32px;box-shadow:var(--shadow-3);display:flex;flex-direction:column;min-width:0;z-index:20;overflow:hidden;transition:transform .28s ease,opacity .2s ease,top .45s var(--spring),left .45s var(--spring),right .45s var(--spring),bottom .45s var(--spring),width .45s var(--spring),border-radius .45s var(--spring)}
 body.sheet-collapsed .results{transform:translateX(calc(100% + 32px));opacity:0}
 .sheet-toggle{position:absolute;top:50%;right:480px;z-index:30;width:44px;height:64px;border:1px solid rgba(225,227,225,.82);border-right:0;border-radius:24px 0 0 24px;background:rgba(251,253,248,.96);backdrop-filter:blur(14px);color:var(--primary);display:grid;place-items:center;box-shadow:-8px 12px 28px -18px rgba(25,28,26,.36);cursor:pointer;transition:right .28s ease, transform .2s ease}
 .sheet-toggle:hover{transform:translateX(-2px)}
 body.sheet-collapsed .sheet-toggle{right:24px;border-right:1px solid rgba(225,227,225,.82);border-radius:24px}
-body.sheet-collapsed .sheet-toggle .material-symbols-outlined{transform:rotate(180deg)}
+body.sheet-collapsed .sheet-toggle .icon{transform:rotate(180deg)}
 .results-head{padding:24px;border-bottom:1px solid var(--outline);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .results-title{font-size:26px;font-weight:800;margin:0}
 .results-count{font-size:16px;font-weight:500;color:var(--muted);margin-left:8px}
@@ -89,6 +106,25 @@ body.sheet-collapsed .sheet-toggle .material-symbols-outlined{transform:rotate(1
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .tag{display:inline-flex;align-items:center;gap:5px;background:var(--tertiary);color:#3B4A43;border-radius:var(--pill);padding:5px 8px;font-size:11px;font-weight:700}
 .empty{display:none;text-align:center;color:var(--muted);padding:40px 20px}
+body.serp-mode #map,body.serp-mode .map-fallback{height:112px;overflow:hidden}
+body.serp-mode .map-wrap:after{content:"";position:absolute;left:0;right:0;top:0;height:132px;background:linear-gradient(to bottom,rgba(251,253,248,0) 42%,var(--surface) 96%);pointer-events:none;z-index:1}
+body.serp-mode .map-tools{z-index:520}
+body.serp-mode .sheet-toggle{display:none}
+body.serp-mode .fab{display:none}
+body.serp-mode .search-box{border-radius:28px;box-shadow:var(--shadow-3)}
+body.serp-mode .results{top:calc(80px + 112px + 16px);left:24px;right:24px;bottom:24px;width:auto;border-radius:var(--radius-xl);transform:none;opacity:1}
+body.serp-mode .results-title{font-size:32px}
+body.serp-mode .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:20px;align-content:start}
+body.serp-mode .card{animation:cardRise .5s var(--spring) both}
+body.serp-mode .card:nth-child(2){animation-delay:.04s}
+body.serp-mode .card:nth-child(3){animation-delay:.08s}
+body.serp-mode .card:nth-child(4){animation-delay:.12s}
+body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
+@keyframes cardRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){
+ body.serp-mode .card{animation:none}
+ .map-fallback,#map,.results,.search-box,.chip,.chip-label,.price-fields{transition:none}
+}
 .drawer{position:fixed;inset:0;z-index:2000;display:none;background:rgba(25,28,26,.45);align-items:center;justify-content:center;padding:18px}
 .drawer.open{display:flex}
 .detail{width:min(460px,100%);max-height:88vh;overflow:auto;background:var(--surface);border-radius:32px;box-shadow:var(--shadow-3)}
@@ -106,12 +142,41 @@ body.sheet-collapsed .sheet-toggle .material-symbols-outlined{transform:rotate(1
 .secondary-action{background:#fff;color:var(--primary);border:1px solid var(--outline)}
 .report{border:0;background:transparent;color:var(--danger);font-weight:700;padding:8px;cursor:pointer}
 @media (max-width:980px){
- .topbar{height:72px}.topbar-inner{gap:12px}.brand{font-size:22px}.nav{display:none}.actions .add-btn{padding:10px 16px}
+ .topbar{height:72px}.topbar-inner{gap:12px}.brand{font-size:22px}.nav{display:none}.actions{gap:8px}.actions .add-btn{width:44px;height:44px;padding:0;justify-content:center;font-size:0}.actions .add-btn .icon{width:20px;height:20px}
  .layout{padding-top:72px}.map-wrap{inset:72px 0 0}.map-tools{left:14px;right:14px;top:14px}.results{top:auto;left:0;right:0;bottom:0;width:auto;max-height:46vh;border-left:0;border-top:1px solid var(--outline);border-radius:28px 28px 0 0}.sheet-toggle{top:auto;right:18px;bottom:calc(46vh + 18px);width:48px;height:48px;border:1px solid rgba(225,227,225,.82);border-radius:50%}body.sheet-collapsed .results{transform:translateY(calc(100% + 18px));opacity:0}body.sheet-collapsed .sheet-toggle{right:18px;bottom:18px}.results-head{padding:16px 18px}.results-title{font-size:21px}.cards{padding:14px;display:grid;grid-auto-flow:column;grid-auto-columns:82%;overflow-x:auto}.card-media{height:160px}.fab{right:18px;bottom:calc(46vh + 82px);padding:14px 18px}.detail-grid{grid-template-columns:1fr}
+ body.serp-mode #map,body.serp-mode .map-fallback{height:72px}
+ body.serp-mode .map-wrap:after{height:92px}
+ body.serp-mode .results{top:calc(72px + 132px + 10px);left:0;right:0;bottom:0;border-radius:24px 24px 0 0;max-height:none}
+ body.serp-mode .cards{grid-auto-flow:row;grid-template-columns:1fr;overflow-x:visible;padding:16px}
+ body.serp-mode .results-title{font-size:24px}
+ .price-chip.active,.price-chip:focus-within{min-width:292px}
+ .price-chip.active .price-fields,.price-chip:focus-within .price-fields{width:152px}
 }
 </style>
 </head>
 <body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+ <symbol id="i-add" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></symbol>
+ <symbol id="i-account" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 14.2a7.2 7.2 0 0 1-6-3.2c.03-2 4-3.1 6-3.1s5.97 1.1 6 3.1a7.2 7.2 0 0 1-6 3.2z"/></symbol>
+ <symbol id="i-search" viewBox="0 0 24 24"><path d="M9.5 3a6.5 6.5 0 0 1 5.17 10.44l4.45 4.44-1.41 1.41-4.44-4.45A6.5 6.5 0 1 1 9.5 3zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></symbol>
+ <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></symbol>
+ <symbol id="i-tune" viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></symbol>
+ <symbol id="i-apps" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></symbol>
+ <symbol id="i-apartment" viewBox="0 0 24 24"><path d="M17 11V3H7v4H3v14h8v-4h2v4h8V11h-4zM7 19H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm4 4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm4 8h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm4 12h-2v-2h2v2zm0-4h-2v-2h2v2z"/></symbol>
+ <symbol id="i-money" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3zm1 17h-2v-1.5a4 4 0 0 1-2.8-1.7l1.46-1.2c.57.75 1.3 1.1 2.34 1.1 1.1 0 1.7-.42 1.7-1.08 0-.74-.63-.98-2.16-1.38-1.58-.4-3.02-.98-3.02-2.78 0-1.42.98-2.45 2.48-2.82V6h2v1.58c1.06.27 1.82.86 2.38 1.66l-1.48 1.12c-.43-.6-1.03-.95-1.9-.95-.98 0-1.48.4-1.48.98 0 .67.58.9 2.02 1.27 1.7.44 3.16 1.05 3.16 2.9 0 1.52-1.02 2.55-2.7 2.9V19z"/></symbol>
+ <symbol id="i-wifi" viewBox="0 0 24 24"><path d="m1 9 2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8 3 3 3-3a4.24 4.24 0 0 0-6 0zm-4-4 2 2a7.07 7.07 0 0 1 10 0l2-2a9.9 9.9 0 0 0-14 0z"/></symbol>
+ <symbol id="i-ac" viewBox="0 0 24 24"><path d="m22 11h-4.17l3.24-3.24-1.41-1.41L15 11h-2V9l4.66-4.66-1.41-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.41L9 13h2v2l-4.66 4.66 1.41 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.41-1.41L13 15v-2h2l4.66 4.66 1.41-1.41L17.83 13H22v-2z"/></symbol>
+ <symbol id="i-laundry" viewBox="0 0 24 24"><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM8 4h2v2H8V4zm4 0h4v2h-4V4zm0 16a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 0 0 3.46-6c-1.12.7-2.5.67-3.74-.05-1.28-.74-2.53-.72-3.66.02A4 4 0 0 0 12 18z"/></symbol>
+ <symbol id="i-train" viewBox="0 0 24 24"><path d="M12 2c-4 0-8 .5-8 4v9.5A3.5 3.5 0 0 0 7.5 19L6 20.5V21h2.2l2-2h3.6l2 2H18v-.5L16.5 19a3.5 3.5 0 0 0 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17A1.5 1.5 0 1 1 7.5 14a1.5 1.5 0 0 1 0 3zm3.5-7H6V6h5v4zm5.5 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1.5-7h-5V6h5v4z"/></symbol>
+ <symbol id="i-home" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></symbol>
+ <symbol id="i-send" viewBox="0 0 24 24"><path d="M2 21 23 12 2 3v7l15 2-15 2v7z"/></symbol>
+ <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m10 6-1.41 1.41L13.17 12l-4.58 4.59L10 18l6-6-6-6z"/></symbol>
+ <symbol id="i-sort" viewBox="0 0 24 24"><path d="M7 3 3 7h3v10h2V7h3L7 3zm10 18 4-4h-3V7h-2v10h-3l4 4z"/></symbol>
+ <symbol id="i-up" viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.59 5.58L20 12 12 4l-8 8z"/></symbol>
+ <symbol id="i-down" viewBox="0 0 24 24"><path d="m20 12-1.41-1.41L13 16.17V4h-2v12.17l-5.59-5.58L4 12l8 8 8-8z"/></symbol>
+ <symbol id="i-heart" viewBox="0 0 24 24"><path d="m12.1 18.55-.1.1-.11-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5 18.5 5 20 6.5 20 8.5c0 2.89-3.14 5.74-7.9 10.05zM16.5 3c-1.74 0-3.41.81-4.5 2.08A6 6 0 0 0 7.5 3 5.46 5.46 0 0 0 2 8.5c0 3.57 3.21 6.48 8.07 10.9L12 21.15l1.93-1.76C18.79 14.98 22 12.07 22 8.5A5.46 5.46 0 0 0 16.5 3z"/></symbol>
+ <symbol id="i-close" viewBox="0 0 24 24"><path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.29-6.29 1.42 1.41z"/></symbol>
+</svg>
 <header class="topbar">
  <div class="topbar-inner">
   <a class="brand" href="/">Sigamiz</a>
@@ -121,8 +186,8 @@ body.sheet-collapsed .sheet-toggle .material-symbols-outlined{transform:rotate(1
    <a href="/#how-it-works">How it works</a>
   </nav>
   <div class="actions">
-   <a class="add-btn" href="https://t.me/klapa_net_bot?start=add" target="_blank"><span class="material-symbols-outlined">add</span>Add Listing</a>
-   <button class="icon-btn" aria-label="Profile"><span class="material-symbols-outlined">account_circle</span></button>
+   <a class="add-btn" href="https://t.me/klapa_net_bot?start=add" target="_blank"><span class="material-symbols-outlined" data-fallback="+">add</span>Add Listing</a>
+   <button class="icon-btn" aria-label="Profile"><span class="material-symbols-outlined" data-fallback="@">account_circle</span></button>
   </div>
  </div>
 </header>
@@ -132,35 +197,45 @@ body.sheet-collapsed .sheet-toggle .material-symbols-outlined{transform:rotate(1
   <div class="map-fallback"></div>
   <div id="map"></div>
   <div class="map-tools">
-   <label class="search-box">
-    <span class="material-symbols-outlined">search</span>
+   <div class="search-box">
+    <button type="button" class="search-icon-btn" id="searchIconBtn" tabindex="-1" aria-hidden="true">
+     <span class="material-symbols-outlined" id="searchIcon" data-fallback="?">search</span>
+    </button>
     <input id="searchInput" type="search" placeholder="Tuman yoki Universitet qidirish...">
-    <span class="material-symbols-outlined">tune</span>
-   </label>
+    <span class="search-tune material-symbols-outlined" data-fallback="=">tune</span>
+   </div>
    <div class="chip-row" id="filters">
-    <button class="chip active" data-type="all" type="button">Hammasi</button>
-    <button class="chip" data-type="offer" type="button">Uy bor</button>
-    <button class="chip" data-type="seek" type="button">Qidiryapti</button>
-    <button class="chip" data-filter="has_wifi" type="button"><span class="material-symbols-outlined" style="font-size:16px">wifi</span>Wi-Fi</button>
-    <button class="chip" data-filter="has_ac" type="button">Konditsioner</button>
-    <button class="chip" data-filter="has_washing_machine" type="button">Kir yuvish</button>
-    <button class="chip" data-filter="near_metro" type="button">Metro</button>
+    <button class="chip active" data-type="all" type="button" title="Hammasi"><span class="material-symbols-outlined" data-fallback="*">apps</span><span class="chip-label">Hammasi</span></button>
+    <button class="chip" data-type="offer" type="button" title="Uy bor"><span class="material-symbols-outlined" data-fallback="□">apartment</span><span class="chip-label">Uy bor</span></button>
+    <div class="chip price-chip" id="priceChip">
+     <button class="price-chip-toggle" id="priceToggle" type="button" aria-expanded="false" title="Narx oralig'i">
+      <span class="material-symbols-outlined" data-fallback="$">payments</span><span class="chip-label" id="priceChipLabel">Narx</span>
+     </button>
+     <div class="price-fields" aria-label="Narx oralig'i">
+      <input id="priceMin" type="text" inputmode="numeric" placeholder="dan">
+      <input id="priceMax" type="text" inputmode="numeric" placeholder="gacha">
+     </div>
+    </div>
+    <button class="chip" data-filter="has_wifi" type="button" title="Wi-Fi"><span class="material-symbols-outlined" data-fallback="~">wifi</span><span class="chip-label">Wi-Fi</span></button>
+    <button class="chip" data-filter="has_ac" type="button" title="Konditsioner"><span class="material-symbols-outlined" data-fallback="*">ac_unit</span><span class="chip-label">Konditsioner</span></button>
+    <button class="chip" data-filter="has_washing_machine" type="button" title="Kir yuvish"><span class="material-symbols-outlined" data-fallback="□">local_laundry_service</span><span class="chip-label">Kir yuvish</span></button>
+    <button class="chip" data-filter="near_metro" type="button" title="Metro"><span class="material-symbols-outlined" data-fallback="=">train</span><span class="chip-label">Metro</span></button>
    </div>
   </div>
   <a class="fab" href="https://t.me/klapa_net_bot?start=add" target="_blank">
-   <span class="material-symbols-outlined">send</span>
+   <span class="material-symbols-outlined" data-fallback=">">send</span>
    Telegram Bot
   </a>
  </section>
 
  <button class="sheet-toggle" type="button" aria-label="Toggle results panel" aria-expanded="true" onclick="toggleResultsSheet()">
-  <span class="material-symbols-outlined">chevron_right</span>
+  <span class="material-symbols-outlined" data-fallback=">">chevron_right</span>
  </button>
 
  <aside class="results">
   <div class="results-head">
-   <h1 class="results-title">Natijalar <span class="results-count" id="resultCount">0 ta joy</span></h1>
-   <button class="icon-btn" aria-label="Sort results" title="Sort results"><span class="material-symbols-outlined">swap_vert</span></button>
+   <h1 class="results-title"><span id="resultsTitleLabel">Natijalar</span> <span class="results-count" id="resultCount">0 ta joy</span></h1>
+   <button class="icon-btn" id="sortBtn" type="button" aria-label="Narx bo'yicha saralash" title="Narx bo'yicha saralash" onclick="cycleSort()"><span class="material-symbols-outlined" data-fallback="$">swap_vert</span></button>
   </div>
   <div class="cards" id="cards"></div>
   <p class="empty" id="emptyState">Bu filtrga mos e'lon topilmadi.</p>
@@ -170,7 +245,7 @@ body.sheet-collapsed .sheet-toggle .material-symbols-outlined{transform:rotate(1
 <div class="drawer" id="detailDrawer">
  <article class="detail">
   <div class="detail-media" id="detailMedia">
-   <button class="close" type="button" onclick="closeDetail()"><span class="material-symbols-outlined">close</span></button>
+   <button class="close" type="button" onclick="closeDetail()"><span class="material-symbols-outlined" data-fallback="x">close</span></button>
   </div>
   <div class="detail-body" id="detailBody"></div>
  </article>
@@ -184,16 +259,39 @@ const DEMO_LISTINGS = [
  {id:3, listing_type:"offer", university:"INHA", district:"Mirzo-Ulug'bek", housing_type:"Xonadonli uy", room_count:2, description:"Sokin joy, internet bor, hovlida xojayin turmaydi.", phone_number:"+998931112233", lat:41.34, lng:69.32, price:850000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:1, no_landlord_in_yard:1, near_metro:0, telegram_username:"nigina_inha", photos:[]}
 ];
 
-let map, allListings = [], markers = [], activeType = "all", query = "";
+let map, allListings = [], markers = [], activeType = "offer", query = "";
+let sortMode = "default"; // "default" | "price_asc" | "price_desc"
+let priceMin = null, priceMax = null, priceReloadTimer;
 const activeFilters = new Set();
 const amenityLabels = {
- has_wifi:["wifi","Wi-Fi"], has_ac:["ac_unit","Konditsioner"],
- has_washing_machine:["local_laundry_service","Kir yuvish"], no_landlord_in_yard:["home","Xo'jayinsiz"],
- near_metro:["train","Metro"]
+ has_wifi:["wifi","~","Wi-Fi"], has_ac:["ac_unit","*","Konditsioner"],
+ has_washing_machine:["local_laundry_service","□","Kir yuvish"], no_landlord_in_yard:["home","^","Xo'jayinsiz"],
+ near_metro:["train","=","Metro"]
 };
 
 function escapeHtml(value){
  return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
+}
+const iconAliases = {
+ add:"add", account_circle:"account", search:"search", arrow_back:"back", tune:"tune",
+ apps:"apps", apartment:"apartment", payments:"money", wifi:"wifi", ac_unit:"ac",
+ local_laundry_service:"laundry", train:"train", home:"home", send:"send",
+ chevron_right:"chevron-right", swap_vert:"sort", arrow_upward:"up", arrow_downward:"down",
+ favorite_border:"heart", close:"close"
+};
+function iconMarkup(name, extraClass = ""){
+ const id = iconAliases[name] || name;
+ return `<svg class="icon${extraClass ? ` ${extraClass}` : ""}"><use href="#i-${id}"></use></svg>`;
+}
+function replaceLegacyIcons(root = document){
+ root.querySelectorAll(".material-symbols-outlined").forEach(node => {
+  const name = node.textContent.trim();
+  const template = document.createElement("template");
+  template.innerHTML = iconMarkup(name);
+  const icon = template.content.firstElementChild;
+  if(node.id) icon.id = node.id;
+  node.replaceWith(icon);
+ });
 }
 function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " so'm"; }
 function compactPrice(value){
@@ -202,20 +300,57 @@ function compactPrice(value){
  return Math.round(price / 1000) + "k";
 }
 function typeInfo(item){
- return item.listing_type === "seek"
-  ? {key:"seek", label:"Qidiryapti", sub:`${item.people_needed || 1} kishi turar joy qidiryapti`}
-  : {key:"offer", label:"Uy bor", sub:`${item.people_needed || 1} xonadosh kerak`};
+ return {key:"offer", label:"Uy bor", sub:`${item.people_needed || 1} xonadosh kerak`};
 }
 function titleFor(item){ return [item.district, item.university].filter(Boolean).join(", ") || "Toshkent"; }
+function parseMoney(value){
+ const parsed = Number(String(value || "").replace(/[^\d]/g, ""));
+ return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+function priceRangeLabel(){
+ if(priceMin && priceMax) return `${compactPrice(priceMin)}-${compactPrice(priceMax)}`;
+ if(priceMin) return `${compactPrice(priceMin)}+`;
+ if(priceMax) return `<=${compactPrice(priceMax)}`;
+ return "Narx";
+}
+function updatePriceChip(){
+ const chip = document.getElementById("priceChip");
+ const toggle = document.getElementById("priceToggle");
+ const label = document.getElementById("priceChipLabel");
+ const focused = Boolean(document.activeElement?.closest?.("#priceChip"));
+ const active = Boolean(priceMin || priceMax || focused);
+ chip.classList.toggle("active", active);
+ toggle.setAttribute("aria-expanded", String(active));
+ label.textContent = priceRangeLabel();
+}
+function scheduleListingsReload(){
+ clearTimeout(priceReloadTimer);
+ priceReloadTimer = setTimeout(loadListings, 320);
+}
+function centerChip(chip){
+ const row = chip.closest(".chip-row");
+ if(!row) return;
+ const left = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+ row.scrollTo({left:Math.max(0, left), behavior:"smooth"});
+}
+function priceMatches(item){
+ const price = Number(item.price || 0);
+ if(priceMin && price < priceMin) return false;
+ if(priceMax && price > priceMax) return false;
+ return true;
+}
 function matches(item){
- if(activeType !== "all" && item.listing_type !== activeType) return false;
+ if(item.listing_type !== "offer") return false;
  for(const filter of activeFilters){ if(!item[filter]) return false; }
+ if(!priceMatches(item)) return false;
  if(!query) return true;
  return [item.district,item.university,item.housing_type,item.description,item.telegram_username].filter(Boolean).join(" ").toLowerCase().includes(query);
 }
 function buildListingsUrl(){
  const params = new URLSearchParams();
- if(activeType && activeType !== "all") params.set("listing_type", activeType);
+ params.set("listing_type", "offer");
+ if(priceMin) params.set("price_min", String(priceMin));
+ if(priceMax) params.set("price_max", String(priceMax));
  activeFilters.forEach(filter => params.set(filter, "true"));
  const qs = params.toString();
  return qs ? `/api/listings?${qs}` : "/api/listings";
@@ -223,8 +358,8 @@ function buildListingsUrl(){
 function photoFor(item){ return item.photos && item.photos.length ? item.photos[0] : ""; }
 function tagsFor(item, limit = 3){
  return Object.keys(amenityLabels).filter(key => item[key]).slice(0, limit).map(key => {
-  const [icon,label] = amenityLabels[key];
-  return `<span class="tag"><span class="material-symbols-outlined" style="font-size:15px">${icon}</span>${escapeHtml(label)}</span>`;
+  const [icon,,label] = amenityLabels[key];
+  return `<span class="tag">${iconMarkup(icon)}${escapeHtml(label)}</span>`;
  }).join("");
 }
 function initMap(){
@@ -240,10 +375,28 @@ async function loadListings(){
   allListings = await res.json();
   if(!Array.isArray(allListings)) throw new Error("Invalid response");
  }catch(e){ console.error("Failed to load listings", e); allListings = DEMO_LISTINGS; }
+ allListings = allListings.filter(item => item.listing_type === "offer");
+ render();
+}
+function applySort(items){
+ if(sortMode === "price_asc") return [...items].sort((a,b) => Number(a.price||0) - Number(b.price||0));
+ if(sortMode === "price_desc") return [...items].sort((a,b) => Number(b.price||0) - Number(a.price||0));
+ return items;
+}
+function cycleSort(){
+ const order = ["default","price_asc","price_desc"];
+ sortMode = order[(order.indexOf(sortMode) + 1) % order.length];
+ const btn = document.getElementById("sortBtn");
+ const icon = btn.querySelector("use");
+ const labels = { default:["sort","Narx bo'yicha saralash"], price_asc:["up","Arzondan qimmatga"], price_desc:["down","Qimmatdan arzonga"] };
+ const [iconName,title] = labels[sortMode];
+ icon.setAttribute("href", `#i-${iconName}`);
+ btn.title = title;
  render();
 }
 function render(){
- const filtered = allListings.filter(matches);
+ const filtered = applySort(allListings.filter(matches));
+ document.getElementById("resultsTitleLabel").textContent = "Kvartiralar";
  document.getElementById("resultCount").textContent = `${filtered.length} ta joy`;
  document.getElementById("emptyState").style.display = filtered.length ? "none" : "block";
  renderCards(filtered);
@@ -275,7 +428,7 @@ function renderCards(items){
   return `<article class="card" data-id="${item.id}" onclick="openDetail(${item.id})">
    <div class="card-media">
     ${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}
-    <button class="favorite" type="button" onclick="event.stopPropagation()"><span class="material-symbols-outlined">favorite_border</span></button>
+    <button class="favorite" type="button" onclick="event.stopPropagation()">${iconMarkup("favorite_border")}</button>
    </div>
    <div class="card-body">
     <div class="card-price">${formatPrice(item.price)} <small>/oy</small></div>
@@ -306,7 +459,7 @@ async function openDetail(id){
  item = await fetchDetail(item);
  document.querySelectorAll(".card").forEach(card => card.classList.toggle("selected", Number(card.dataset.id) === Number(id)));
  const type = typeInfo(item), photo = photoFor(item);
- document.getElementById("detailMedia").innerHTML = `${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}<button class="close" type="button" onclick="closeDetail()"><span class="material-symbols-outlined">close</span></button>`;
+ document.getElementById("detailMedia").innerHTML = `${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}<button class="close" type="button" onclick="closeDetail()">${iconMarkup("close")}</button>`;
  const telegram = (item.telegram_username || "").replace(/^@/,"").trim();
  const phone = (item.phone_number || "").trim();
  const infos = [
@@ -333,6 +486,44 @@ function toggleResultsSheet(){
  const collapsed = document.body.classList.toggle("sheet-collapsed");
  document.querySelector(".sheet-toggle").setAttribute("aria-expanded", String(!collapsed));
 }
+function setActiveType(type, shouldLoad = true){
+ activeType = type;
+ document.querySelectorAll("[data-type]").forEach(item => item.classList.toggle("active", item.dataset.type === type));
+ if(shouldLoad) loadListings();
+}
+function toggleSerpMode(forceState){
+ const enable = typeof forceState === "boolean" ? forceState : !document.body.classList.contains("serp-mode");
+ if(enable === document.body.classList.contains("serp-mode")) return;
+ document.body.classList.toggle("serp-mode", enable);
+ if(enable) document.body.classList.remove("sheet-collapsed");
+ const icon = document.getElementById("searchIcon").querySelector("use");
+ const iconBtn = document.getElementById("searchIconBtn");
+ icon.setAttribute("href", enable ? "#i-back" : "#i-search");
+ iconBtn.tabIndex = enable ? 0 : -1;
+ iconBtn.setAttribute("aria-hidden", String(!enable));
+ iconBtn.setAttribute("aria-label", enable ? "Xaritaga qaytish" : "Qidiruv");
+ const url = new URL(window.location);
+ if(enable) url.searchParams.set("view", "list"); else url.searchParams.delete("view");
+ history.pushState({}, "", url);
+ clearTimeout(window.__serpResizeTimer);
+ window.__serpResizeTimer = setTimeout(() => { if(map) map.invalidateSize(); }, 480);
+}
+function openSearchResults(){
+ toggleSerpMode(true);
+ if(activeType === "all") setActiveType("offer");
+ else render();
+}
+function exitSerpMode(){
+ toggleSerpMode(false);
+ document.getElementById("searchInput").blur();
+}
+function initViewFromUrl(){
+ const params = new URLSearchParams(window.location.search);
+ if(params.get("view") === "list"){
+  toggleSerpMode(true);
+  if(activeType === "all") setActiveType("offer", false);
+ }
+}
 function getReporterKey(){
  const storageKey = "sigamiz_reporter_key";
  let key = localStorage.getItem(storageKey);
@@ -355,11 +546,21 @@ async function reportListing(id){
  catch(e){ alert("Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring."); }
  closeDetail();
 }
-document.getElementById("searchInput").addEventListener("input", event => { query = event.target.value.trim().toLowerCase(); render(); });
+document.getElementById("searchInput").addEventListener("input", event => {
+ query = event.target.value.trim().toLowerCase();
+ if(query && document.body.classList.contains("sheet-collapsed")) document.body.classList.remove("sheet-collapsed");
+ render();
+});
+document.getElementById("searchInput").addEventListener("focus", openSearchResults);
+document.getElementById("searchInput").addEventListener("keydown", event => {
+ if(event.key === "Escape") exitSerpMode();
+});
+document.getElementById("searchIconBtn").addEventListener("click", () => {
+ if(document.body.classList.contains("serp-mode")) exitSerpMode();
+ else document.getElementById("searchInput").focus();
+});
 document.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => {
- activeType = button.dataset.type;
- document.querySelectorAll("[data-type]").forEach(item => item.classList.toggle("active", item === button));
- loadListings();
+ setActiveType(button.dataset.type);
 }));
 document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => {
  const key = button.dataset.filter;
@@ -367,8 +568,41 @@ document.querySelectorAll("[data-filter]").forEach(button => button.addEventList
  button.classList.toggle("active");
  loadListings();
 }));
+document.getElementById("priceToggle").addEventListener("click", () => {
+ const chip = document.getElementById("priceChip");
+ const shouldOpen = !chip.classList.contains("active");
+ chip.classList.toggle("active", shouldOpen);
+ document.getElementById("priceToggle").setAttribute("aria-expanded", String(shouldOpen));
+ if(shouldOpen) {
+  centerChip(chip);
+  document.getElementById("priceMin").focus();
+  setTimeout(() => centerChip(chip), 80);
+ }
+});
+["priceMin","priceMax"].forEach(id => {
+ const input = document.getElementById(id);
+ input.addEventListener("input", () => {
+  priceMin = parseMoney(document.getElementById("priceMin").value);
+  priceMax = parseMoney(document.getElementById("priceMax").value);
+  updatePriceChip();
+  render();
+  scheduleListingsReload();
+ });
+ input.addEventListener("keydown", event => {
+  if(event.key === "Enter"){
+   event.preventDefault();
+   loadListings();
+   input.blur();
+  }
+ });
+});
+document.getElementById("priceChip").addEventListener("focusout", () => setTimeout(updatePriceChip, 80));
 document.getElementById("detailDrawer").addEventListener("click", event => { if(event.target.id === "detailDrawer") closeDetail(); });
+replaceLegacyIcons();
+setActiveType("offer", false);
 initMap();
+initViewFromUrl();
+updatePriceChip();
 loadListings();
 </script>
 </body>

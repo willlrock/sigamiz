@@ -175,6 +175,8 @@ def get_listings(
     district: str | None = None,
     university: str | None = None,
     preferred_gender: str | None = None,
+    price_min: int | None = None,
+    price_max: int | None = None,
     has_wifi: bool | None = None,
     has_ac: bool | None = None,
     has_washing_machine: bool | None = None,
@@ -198,6 +200,12 @@ def get_listings(
     if preferred_gender and preferred_gender != "any":
         query += " AND (author_gender = ? OR preferred_gender = ? OR preferred_gender = 'any')"
         params.extend([preferred_gender, preferred_gender])
+    if price_min is not None:
+        query += " AND price_per_person >= ?"
+        params.append(price_min)
+    if price_max is not None:
+        query += " AND price_per_person <= ?"
+        params.append(price_max)
     amenity_filters = {
         "has_wifi": has_wifi,
         "has_ac": has_ac,
