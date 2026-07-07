@@ -462,12 +462,25 @@ document.addEventListener('click', (e) => {
  if(e.target.id === 'overlay') closeModal();
 });
 
+function getReporterKey(){
+ const storageKey = "sigamiz_reporter_key";
+ let key = localStorage.getItem(storageKey);
+ if(!key){
+ key = window.crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+ localStorage.setItem(storageKey, key);
+ }
+ return key;
+}
+
 async function reportListing(id){
  const reason = prompt("Shikoyat sababi (masalan: makler, spam):");
  if(!reason) return;
+ const reporterKey = encodeURIComponent(getReporterKey());
  try {
- await fetch(`/api/report?listing_id=${id}&reason=${encodeURIComponent(reason)}`, { method: 'POST' });
- alert("Shikoyat qabul qilindi. Rahmat!");
+ const response = await fetch(`/api/report?listing_id=${id}&reason=${encodeURIComponent(reason)}&reporter_key=${reporterKey}`, { method: 'POST' });
+ if(!response.ok) throw new Error("Report failed");
+ const data = await response.json();
+ alert(data.message || "Shikoyat qabul qilindi. Rahmat!");
  } catch(e){
  alert("Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
  }

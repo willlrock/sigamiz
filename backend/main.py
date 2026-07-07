@@ -61,9 +61,14 @@ def migrate_db(cursor):
     })
     ensure_columns(cursor, "reports", {
         "reporter_telegram_id": "INTEGER",
+        "reporter_key": "TEXT",
         "reason": "TEXT",
         "created_at": "DATETIME",
     })
+    cursor.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_listing_reporter_key "
+        "ON reports (listing_id, reporter_key)"
+    )
     ensure_columns(cursor, "banned_users", {
         "reason": "TEXT",
         "banned_at": "DATETIME",
@@ -254,7 +259,13 @@ def get_listing_detail(listing_id: int):
     return data
 
 @app.post("/api/report")
-async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
+async def report_listing(listing_id: int, reason: str, reporter_id: int = 0, reporter_key: str | None = None):
+    normalized_reporter_key = (reporter_key or "").strip()[:128]
+    if not normalized_reporter_key and reporter_id:
+        normalized_reporter_key = f"telegram:{reporter_id}"
+    if not normalized_reporter_key:
+        raise HTTPException(status_code=400, detail="Reporter identity is required")
+
     conn = get_db()
     cursor = conn.cursor()
     owner_row = cursor.execute(
@@ -272,22 +283,27 @@ async def report_listing(listing_id: int, reason: str, reporter_id: int = 0):
     elif "reporter_telegram_id" in report_columns:
         reporter_column = "reporter_telegram_id"
 
-    if reporter_id and reporter_column:
-        duplicate = cursor.execute(
-            f"SELECT 1 FROM reports WHERE listing_id = ? AND {reporter_column} = ?",
-            (listing_id, reporter_id),
-        ).fetchone()
-        if duplicate:
-            conn.close()
-            return {"message": "Shikoyat allaqachon qabul qilingan"}
+    duplicate = cursor.execute(
+        "SELECT 1 FROM reports WHERE listing_id = ? AND reporter_key = ?",
+        (listing_id, normalized_reporter_key),
+    ).fetchone()
+    if duplicate:
+        conn.close()
+        return {"message": "Shikoyat allaqachon qabul qilingan"}
 
     if reporter_column:
         cursor.execute(
-            f"INSERT INTO reports (listing_id, reason, {reporter_column}) VALUES (?, ?, ?)",
-            (listing_id, reason, reporter_id if reporter_id != 0 else 0),
+            f"INSERT OR IGNORE INTO reports (listing_id, reason, reporter_key, {reporter_column}) VALUES (?, ?, ?, ?)",
+            (listing_id, reason, normalized_reporter_key, reporter_id if reporter_id != 0 else 0),
         )
     else:
-        cursor.execute("INSERT INTO reports (listing_id, reason) VALUES (?, ?)", (listing_id, reason))
+        cursor.execute(
+            "INSERT OR IGNORE INTO reports (listing_id, reason, reporter_key) VALUES (?, ?, ?)",
+            (listing_id, reason, normalized_reporter_key),
+        )
+    if cursor.rowcount == 0:
+        conn.close()
+        return {"message": "Shikoyat allaqachon qabul qilingan"}
 
     cursor.execute("UPDATE listings SET report_count = report_count + 1 WHERE id = ?", (listing_id,))
     cursor.execute("SELECT report_count FROM listings WHERE id = ?", (listing_id,))
