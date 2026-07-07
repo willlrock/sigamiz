@@ -24,12 +24,15 @@ BOT_USERNAME=your_bot_username_without_at
 ADMIN_CHAT_ID=your_admin_chat_id
 SITE_URL=https://your-domain.example
 SESSION_SECRET=generate_a_long_random_secret
+Yandex_java=your_yandex_maps_javascript_api_key
+Yandex_geocoder=your_yandex_geocoder_api_key
 SEED_DEMO_DATA=false
 ```
 
 `ADMIN_CHAT_ID` can contain one chat id or a comma-separated list.
 `BOT_USERNAME` defaults to `klapa_net_bot`; set it explicitly when deploying another bot.
 `SESSION_SECRET` signs web sessions; keep it separate from `BOT_TOKEN`.
+`Yandex_java` is exposed to the browser for Yandex Maps JavaScript API. `Yandex_geocoder` stays backend-only for address lookup.
 
 ## Local Run
 

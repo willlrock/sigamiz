@@ -23,6 +23,16 @@ BOT_USERNAME = (os.getenv("BOT_USERNAME") or "klapa_net_bot").lstrip("@")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 SITE_URL = os.getenv("SITE_URL", "https://klapa.net").rstrip("/")
 SESSION_SECRET = os.getenv("SESSION_SECRET") or secrets.token_hex(32)
+YANDEX_MAPS_JS_KEY = (
+    os.getenv("YANDEX_MAPS_JS_KEY")
+    or os.getenv("YANDEX_JAVA")
+    or os.getenv("Yandex_java")
+)
+YANDEX_GEOCODER_KEY = (
+    os.getenv("YANDEX_GEOCODER_KEY")
+    or os.getenv("YANDEX_GEOCODER")
+    or os.getenv("Yandex_geocoder")
+)
 
 app = FastAPI()
 
@@ -702,7 +712,48 @@ def get_config():
         token_prefix = BOT_TOKEN.split(":", 1)[0]
         if token_prefix.isdigit():
             telegram_client_id = token_prefix
-    return {"bot_username": BOT_USERNAME, "telegram_client_id": telegram_client_id}
+    return {
+        "bot_username": BOT_USERNAME,
+        "telegram_client_id": telegram_client_id,
+        "yandex_maps_js_key": YANDEX_MAPS_JS_KEY,
+    }
+
+@app.get("/api/geocode")
+def geocode_address(address: str):
+    query = (address or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="address is required")
+    if not YANDEX_GEOCODER_KEY:
+        raise HTTPException(status_code=503, detail="Yandex geocoder is not configured")
+
+    try:
+        response = requests.get(
+            "https://geocode-maps.yandex.ru/1.x/",
+            params={
+                "apikey": YANDEX_GEOCODER_KEY,
+                "format": "json",
+                "geocode": f"{query}, Tashkent, Uzbekistan",
+                "results": 1,
+                "lang": "uz_UZ",
+            },
+            timeout=8,
+        )
+        response.raise_for_status()
+        data = response.json()
+        members = data["response"]["GeoObjectCollection"]["featureMember"]
+    except Exception:
+        raise HTTPException(status_code=502, detail="Yandex geocoder request failed")
+
+    if not members:
+        raise HTTPException(status_code=404, detail="Address not found")
+
+    geo_object = members[0]["GeoObject"]
+    lon, lat = geo_object["Point"]["pos"].split()
+    return {
+        "lat": float(lat),
+        "lng": float(lon),
+        "label": geo_object.get("metaDataProperty", {}).get("GeocoderMetaData", {}).get("text") or query,
+    }
 
 @app.get("/api/favorites")
 def get_favorites(request: Request):

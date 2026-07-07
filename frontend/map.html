@@ -281,7 +281,7 @@ const DEMO_LISTINGS = [
  {id:3, listing_type:"offer", university:"INHA", district:"Mirzo-Ulug'bek", housing_type:"Xonadonli uy", room_count:2, description:"Sokin joy, internet bor, hovlida xojayin turmaydi.", phone_number:"+998931112233", lat:41.34, lng:69.32, price:850000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:1, no_landlord_in_yard:1, near_metro:0, telegram_username:"nigina_inha", photos:[]}
 ];
 
-let map, allListings = [], markers = [], activeType = "offer", query = "";
+let map, mapProvider = "", appConfigPromise, allListings = [], markers = [], activeType = "offer", query = "";
 let sortMode = "default"; // "default" | "price_asc" | "price_desc"
 let priceMin = null, priceMax = null, priceReloadTimer;
 let currentUser = null, toastTimer;
@@ -322,6 +322,10 @@ function showToast(html){
  toast.classList.add("show");
  clearTimeout(toastTimer);
  toastTimer = setTimeout(() => toast.classList.remove("show"), 5200);
+}
+function getAppConfig(){
+ if(!appConfigPromise) appConfigPromise = fetch("/api/config").then(res => res.json()).catch(() => ({}));
+ return appConfigPromise;
 }
 function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " so'm"; }
 function compactPrice(value){
@@ -392,11 +396,48 @@ function tagsFor(item, limit = 3){
   return `<span class="tag">${iconMarkup(icon)}${escapeHtml(label)}</span>`;
  }).join("");
 }
-function initMap(){
- if(!window.L) return;
+function loadScript(src){
+ return new Promise((resolve,reject)=>{
+  const script = document.createElement("script");
+  script.src = src;
+  script.async = true;
+  script.onload = resolve;
+  script.onerror = reject;
+  document.head.appendChild(script);
+ });
+}
+function initLeafletMap(){
+ if(!window.L) return false;
+ mapProvider = "leaflet";
  map = L.map("map", { zoomControl:false }).setView([41.2995,69.2401], 12);
  L.control.zoom({ position:"bottomleft" }).addTo(map);
  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:"&copy; OpenStreetMap contributors" }).addTo(map);
+ return true;
+}
+async function initYandexMap(apiKey){
+ await loadScript(`https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=ru_RU`);
+ await new Promise(resolve => ymaps.ready(resolve));
+ mapProvider = "yandex";
+ map = new ymaps.Map("map", {
+  center:[41.2995,69.2401],
+  zoom:12,
+  controls:["zoomControl","geolocationControl"]
+ }, {
+  suppressMapOpenBlock:true,
+  yandexMapDisablePoiInteractivity:true
+ });
+}
+async function initMap(){
+ const config = await getAppConfig();
+ if(config.yandex_maps_js_key){
+  try{
+   await initYandexMap(config.yandex_maps_js_key);
+   return;
+  }catch(e){
+   console.error("Failed to load Yandex map", e);
+  }
+ }
+ initLeafletMap();
 }
 async function loadListings(){
  try{
@@ -427,7 +468,7 @@ async function loadMe(){
  return currentUser;
 }
 async function mountTelegramLogin(){
- const config = await fetch("/api/config").then(res => res.json()).catch(() => ({}));
+ const config = await getAppConfig();
  if(!config.telegram_client_id) return;
  window.onMapTelegramAuth = telegramAuth;
  const button = document.createElement("button");
@@ -445,6 +486,11 @@ async function mountTelegramLogin(){
  target.innerHTML = "";
  target.appendChild(button);
  target.appendChild(script);
+}
+function refreshMapSize(){
+ if(!map) return;
+ if(mapProvider === "yandex") map.container.fitToViewport();
+ else if(map.invalidateSize) map.invalidateSize();
 }
 function applySort(items){
  if(sortMode === "price_asc") return [...items].sort((a,b) => Number(a.price||0) - Number(b.price||0));
@@ -472,19 +518,34 @@ function render(){
 }
 function renderMarkers(items){
  if(!map) return;
- markers.forEach(marker => map.removeLayer(marker));
+ markers.forEach(marker => {
+  if(mapProvider === "yandex") map.geoObjects.remove(marker);
+  else marker.remove ? marker.remove() : map.removeLayer(marker);
+ });
  markers = [];
  items.forEach(item => {
   if(item.listing_type === "seek") return;
   const lat = Number(item.lat), lng = Number(item.lng);
   if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
   const type = typeInfo(item);
-  const icon = L.divIcon({
-   className:"",
-   html:`<div class="pin ${item.status === "hidden_pending_review" ? "reviewing" : type.key}"><span>${escapeHtml(compactPrice(item.price))}</span></div>`
-  });
-  const marker = L.marker([lat,lng], { icon }).addTo(map);
-  marker.on("click", () => openDetail(item.id));
+  let marker;
+  if(mapProvider === "yandex"){
+   marker = new ymaps.Placemark([lat,lng], {
+    iconContent: compactPrice(item.price),
+    hintContent: titleFor(item)
+   }, {
+    preset: item.status === "hidden_pending_review" ? "islands#grayStretchyIcon" : "islands#greenStretchyIcon"
+   });
+   marker.events.add("click", () => openDetail(item.id));
+   map.geoObjects.add(marker);
+  }else{
+   const icon = L.divIcon({
+    className:"",
+    html:`<div class="pin ${item.status === "hidden_pending_review" ? "reviewing" : type.key}"><span>${escapeHtml(compactPrice(item.price))}</span></div>`
+   });
+   marker = L.marker([lat,lng], { icon }).addTo(map);
+   marker.on("click", () => openDetail(item.id));
+  }
   markers.push(marker);
  });
 }
@@ -606,7 +667,7 @@ function toggleSerpMode(forceState){
  if(enable) url.searchParams.set("view", "list"); else url.searchParams.delete("view");
  history.pushState({}, "", url);
  clearTimeout(window.__serpResizeTimer);
- window.__serpResizeTimer = setTimeout(() => { if(map) map.invalidateSize(); }, 480);
+ window.__serpResizeTimer = setTimeout(refreshMapSize, 480);
 }
 function openSearchResults(){
  toggleSerpMode(true);
@@ -714,12 +775,11 @@ document.getElementById("accountMenu").addEventListener("click", event => event.
 document.addEventListener("click", closeAccountMenu);
 replaceLegacyIcons();
 setActiveType("offer", false);
-initMap();
 initViewFromUrl();
 updatePriceChip();
 loadMe();
 mountTelegramLogin();
-loadListings();
+initMap().then(loadListings);
 </script>
 </body>
 </html>

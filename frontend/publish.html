@@ -210,10 +210,12 @@ document.getElementById("findAddress").addEventListener("click",async()=>{
  if(!address){status.textContent="Avval manzil yozing.";return;}
  status.textContent="Manzil qidirilmoqda...";
  try{
-  const url=`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address+", Tashkent, Uzbekistan")}`;
-  const items=await fetch(url,{headers:{"Accept":"application/json"}}).then(res=>res.json());
-  if(!items.length){status.textContent="Manzil topilmadi. Yaqinroq mo'ljal bilan qayta urinib ko'ring.";return;}
-  setLocation(items[0].lat,items[0].lon,"Manzil bo'yicha lokatsiya saqlandi.");
+  const item=await fetch(`/api/geocode?address=${encodeURIComponent(address)}`).then(async res=>{
+   const data=await res.json().catch(()=>({}));
+   if(!res.ok) throw new Error(data.detail||"geocode");
+   return data;
+  });
+  setLocation(item.lat,item.lng,item.label ? `Topildi: ${item.label}` : "Manzil bo'yicha lokatsiya saqlandi.");
  }catch(e){status.textContent="Manzilni topib bo'lmadi. Keyinroq qayta urinib ko'ring.";}
 });
 document.getElementById("photos").addEventListener("change",event=>readFiles(event.target.files));

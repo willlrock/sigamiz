@@ -23,11 +23,12 @@ Sigamiz helps students find shared housing in Tashkent while reducing broker spa
 - One Telegram account can have one active apartment listing at a time. This keeps the board closer to real student listings and makes broker behavior harder.
 - Listings expire after 7 days unless extended from the bot.
 - Publishers can add district, university, housing type, room count, price per person, roommate preference, amenities, phone visibility, description, location, and up to 5 photos.
-- The website can capture browser location or geocode a typed address. Raw latitude and longitude are stored internally but are no longer the primary user input.
+- The website can capture browser location or geocode a typed address through backend `/api/geocode` using `Yandex_geocoder`. Raw latitude and longitude are stored internally but are no longer the primary user input.
 
 ## Maps And Search
 
-- The map shows active apartment offers only.
+- The map shows active apartment offers only and uses Yandex Maps when `Yandex_java`/`YANDEX_JAVA` is configured.
+- If Yandex Maps cannot load, the map falls back to the previous Leaflet/OpenStreetMap renderer.
 - Students can filter by price, amenities, district/university text search, and sort by price.
 - Listing cards show price, district/university, photos, amenities, and contact actions.
 - The top map navigation keeps `Map`, `About`, and `How it works`; favorites live under the account menu.
