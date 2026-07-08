@@ -42,8 +42,9 @@ a{color:inherit;text-decoration:none}
 .account-menu.open{display:grid;gap:10px}
 .account-user{display:grid;gap:2px;border-bottom:1px solid var(--outline);padding:4px 4px 10px;color:var(--muted);font-size:12px}
 .account-user b{font-size:14px;color:var(--text)}
-.account-link{display:flex;align-items:center;gap:9px;border-radius:12px;padding:10px 11px;color:var(--muted);font-weight:800}
-.account-link:hover{background:var(--surface-container);color:var(--primary)}
+.account-link,.account-action{display:flex;align-items:center;gap:9px;border-radius:12px;padding:10px 11px;color:var(--muted);font-weight:800}
+.account-action{width:100%;border:0;background:transparent;text-align:left;cursor:pointer}
+.account-link:hover,.account-action:hover{background:var(--surface-container);color:var(--primary)}
 .telegram-login-slot{display:grid;place-items:start;padding:4px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,18px);z-index:2500;width:min(420px,calc(100vw - 32px));background:var(--text);color:#fff;border-radius:18px;padding:14px 16px;box-shadow:var(--shadow-3);opacity:0;pointer-events:none;transition:.22s ease;font-size:14px;line-height:1.45}
 .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
@@ -108,12 +109,19 @@ body.sheet-collapsed .sheet-toggle .icon{transform:rotate(180deg)}
 .card:hover .card-media img{transform:scale(1.04)}
 .favorite{position:absolute;top:14px;right:14px;width:46px;height:46px;border:0;border-radius:50%;background:rgba(251,253,248,.84);backdrop-filter:blur(10px);display:grid;place-items:center;color:var(--muted);box-shadow:var(--shadow-1)}
 .favorite.active{background:var(--primary);color:#fff}
+.share{position:absolute;top:68px;right:14px;width:46px;height:46px;border:0;border-radius:50%;background:rgba(251,253,248,.84);backdrop-filter:blur(10px);display:grid;place-items:center;color:var(--primary);box-shadow:var(--shadow-1);cursor:pointer}
 .viewed-badge{position:absolute;left:14px;top:14px;border-radius:var(--pill);background:rgba(251,253,248,.9);color:var(--primary);font-size:11px;font-weight:800;padding:7px 10px;box-shadow:var(--shadow-1)}
 .card-price{font-size:21px;font-weight:800;color:var(--primary);letter-spacing:0;line-height:1.15}
 .card-price small{font-size:13px;font-weight:700;color:var(--muted)}
 .card-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px}
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .card-title{font-size:18px;font-weight:800;margin:0;line-height:1.25}
+.author-row{display:flex;align-items:center;gap:9px;min-width:0;color:var(--muted);font-size:12px;font-weight:700}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--tertiary);color:var(--primary);display:grid;place-items:center;overflow:hidden;flex:0 0 auto;font-size:12px;font-weight:900}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.author-row b{display:block;color:var(--text);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.author-row span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.detail-author{margin:12px 0 14px}
 .rating,.type-badge{display:inline-flex;align-items:center;gap:4px;border-radius:var(--pill);padding:6px 10px;background:var(--surface-container);font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap}
 .type-badge.offer{background:var(--tertiary);color:var(--primary)}
 .type-badge.seek{background:var(--seek-soft);color:var(--seek)}
@@ -281,7 +289,7 @@ const DEMO_LISTINGS = [
  {id:3, listing_type:"offer", university:"INHA", district:"Mirzo-Ulug'bek", housing_type:"Xonadonli uy", room_count:2, description:"Sokin joy, internet bor, hovlida xojayin turmaydi.", phone_number:"+998931112233", lat:41.34, lng:69.32, price:850000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:1, no_landlord_in_yard:1, near_metro:0, telegram_username:"nigina_inha", photos:[]}
 ];
 
-let map, mapProvider = "", appConfigPromise, allListings = [], markers = [], activeType = "offer", query = "";
+let map, mapProvider = "", appConfigPromise, allListings = [], markers = [], activeType = "offer", query = "", botLoginPollTimer = null, sharedListingOpened = false;
 let sortMode = "default"; // "default" | "price_asc" | "price_desc"
 let priceMin = null, priceMax = null, priceReloadTimer;
 let currentUser = null, toastTimer;
@@ -332,6 +340,48 @@ function compactPrice(value){
  const price = Number(value || 0);
  if(price >= 1000000) return (price / 1000000).toFixed(price % 1000000 ? 1 : 0) + "m";
  return Math.round(price / 1000) + "k";
+}
+function parseDate(value){
+ const date = value ? new Date(value) : null;
+ return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+function daysDiff(from, to){
+ return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86400000));
+}
+function publishedLabel(value){
+ const date = parseDate(value);
+ if(!date) return "Yangi e'lon";
+ const days = daysDiff(date, new Date());
+ if(days <= 0) return "Bugun joylandi";
+ if(days === 1) return "1 kun oldin joylandi";
+ return `${days} kun oldin joylandi`;
+}
+function expiresLabel(value){
+ const date = parseDate(value);
+ if(!date) return "";
+ const now = new Date();
+ const ms = date.getTime() - now.getTime();
+ if(ms <= 0) return "Muddati tugagan";
+ const days = Math.ceil(ms / 86400000);
+ if(days <= 1) return "Bugun o'chadi";
+ return `${days} kunda o'chadi`;
+}
+function listingTimeLabel(item){
+ return [publishedLabel(item.created_at), expiresLabel(item.expires_at)].filter(Boolean).join(" · ");
+}
+function authorName(item){
+ if(item.author_first_name) return item.author_first_name;
+ if(item.telegram_username) return `@${String(item.telegram_username).replace(/^@/,"")}`;
+ return "Telegram user";
+}
+function avatarHtml(item){
+ const name = authorName(item);
+ const initial = escapeHtml(name.replace(/^@/,"").slice(0, 1).toUpperCase() || "T");
+ return `<span class="avatar">${item.author_photo_url ? `<img src="${escapeHtml(item.author_photo_url)}" alt="">` : initial}</span>`;
+}
+function authorRowHtml(item, extraClass = ""){
+ const username = item.telegram_username ? `@${String(item.telegram_username).replace(/^@/,"")}` : "Telegram akkaunt";
+ return `<div class="author-row ${extraClass}">${avatarHtml(item)}<div><b>${escapeHtml(authorName(item))}</b><span>${escapeHtml(username)} · ${escapeHtml(listingTimeLabel(item))}</span></div></div>`;
 }
 function typeInfo(item){
  return {key:"offer", label:"E'lon", sub:`${item.people_needed || 1} xonadosh kerak`};
@@ -388,6 +438,12 @@ function buildListingsUrl(){
  activeFilters.forEach(filter => params.set(filter, "true"));
  const qs = params.toString();
  return qs ? `/api/listings?${qs}` : "/api/listings";
+}
+function listingShareUrl(id){
+ const url = new URL("/xarita", window.location.origin);
+ url.searchParams.set("listing", String(id));
+ url.searchParams.set("view", "list");
+ return url.toString();
 }
 function photoFor(item){ return item.photos && item.photos.length ? item.photos[0] : ""; }
 function tagsFor(item, limit = 3){
@@ -448,6 +504,7 @@ async function loadListings(){
  }catch(e){ console.error("Failed to load listings", e); allListings = DEMO_LISTINGS; }
  allListings = allListings.filter(item => item.listing_type === "offer");
  render();
+ openSharedListingFromUrl();
 }
 async function telegramAuth(user){
  const res = await fetch("/api/auth/telegram", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(user)});
@@ -467,25 +524,70 @@ async function loadMe(){
  }
  return currentUser;
 }
+async function startBotLogin(){
+ const popup = window.open("about:blank", "_blank");
+ try{
+  const session = await fetch("/api/auth/telegram/start", {method:"POST"}).then(res => {
+   if(!res.ok) throw new Error("Telegram bot sozlanmagan.");
+   return res.json();
+  });
+  showToast("Telegram ochildi. Botda Start bosing, keyin sahifa avtomatik kiradi.");
+  if(popup){popup.opener = null; popup.location.href = session.bot_url;}
+  else window.location.href = session.bot_url;
+  clearInterval(botLoginPollTimer);
+  botLoginPollTimer = setInterval(async () => {
+   try{
+    const res = await fetch("/api/auth/telegram/complete", {
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({token:session.token})
+    });
+    if(res.status === 404){
+     clearInterval(botLoginPollTimer);
+     showToast("Kirish havolasi eskirdi. Telegram orqali kirishni qayta bosing.");
+     return;
+    }
+    const data = await res.json().catch(() => ({}));
+    if(data.ok){
+     clearInterval(botLoginPollTimer);
+     await loadMe();
+     await loadListings();
+     showToast("Telegram orqali kirdingiz.");
+    }
+   }catch(e){}
+  }, 1800);
+  setTimeout(() => clearInterval(botLoginPollTimer), 10 * 60 * 1000);
+ }catch(e){
+  if(popup) popup.close();
+  showToast(String(e.message || e));
+ }
+}
 async function mountTelegramLogin(){
  const config = await getAppConfig();
- if(!config.telegram_client_id) return;
- window.onMapTelegramAuth = telegramAuth;
- const button = document.createElement("button");
- button.className = "tg-auth-button";
- button.dataset.style = "shine";
- button.type = "button";
- button.textContent = "Sign In with Telegram";
- const script = document.createElement("script");
- script.async = true;
- script.src = "https://oauth.telegram.org/js/telegram-login.js?5";
- script.dataset.clientId = config.telegram_client_id;
- script.dataset.requestAccess = "write";
- script.dataset.onauth = "onMapTelegramAuth(data)";
  const target = document.getElementById("mapTelegramLogin");
  target.innerHTML = "";
- target.appendChild(button);
- target.appendChild(script);
+ window.onMapTelegramAuth = telegramAuth;
+ if(config.telegram_client_id){
+  const button = document.createElement("button");
+  button.className = "tg-auth-button";
+  button.dataset.style = "shine";
+  button.type = "button";
+  button.textContent = "Sign In with Telegram";
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://oauth.telegram.org/js/telegram-login.js?5";
+  script.dataset.clientId = config.telegram_client_id;
+  script.dataset.requestAccess = "write";
+  script.dataset.onauth = "onMapTelegramAuth(data)";
+  target.appendChild(button);
+  target.appendChild(script);
+ }
+ const fallback = document.createElement("button");
+ fallback.className = "account-action";
+ fallback.type = "button";
+ fallback.textContent = "Bot orqali kirish";
+ fallback.onclick = startBotLogin;
+ target.appendChild(fallback);
 }
 function refreshMapSize(){
  if(!map) return;
@@ -561,6 +663,7 @@ function renderCards(items){
     ${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}
     ${item.viewed_at ? `<span class="viewed-badge">Ko'rilgan</span>` : ""}
     <button class="favorite${favoriteClass}" type="button" aria-label="Saqlash" onclick="toggleFavorite(event, ${item.id})">${iconMarkup("favorite_border")}</button>
+    <button class="share" type="button" aria-label="Ulashish" onclick="shareListing(event, ${item.id})">${iconMarkup("send")}</button>
    </div>
    <div class="card-body">
     <div class="card-price">${formatPrice(item.price)} <small>/oy</small></div>
@@ -568,6 +671,7 @@ function renderCards(items){
      <h2 class="card-title">${escapeHtml(titleFor(item))}</h2>
      <span class="type-badge ${type.key}">${escapeHtml(type.label)}</span>
     </div>
+    ${authorRowHtml(item)}
     <p class="desc">${escapeHtml(item.description || type.sub)}</p>
     <div class="tags">${tagsFor(item)}</div>
    </div>
@@ -604,15 +708,34 @@ async function openDetail(id){
  document.getElementById("detailBody").innerHTML = `
   <span class="type-badge ${type.key}">${escapeHtml(type.label)}</span>
   <h2 style="margin:12px 0 4px;font-size:24px">${formatPrice(item.price)} / oyiga</h2>
+  ${authorRowHtml(item, "detail-author")}
   <p class="desc" style="-webkit-line-clamp:unset">${escapeHtml(item.description || type.sub)}</p>
   ${infos ? `<div class="detail-grid">${infos}</div>` : ""}
   <div class="tags">${tagsFor(item, 8)}</div>
   <div class="detail-actions">
    ${telegram ? `<a class="primary-action" href="https://t.me/${encodeURIComponent(telegram)}" target="_blank">Telegram orqali yozish</a>` : ""}
    ${phone ? `<a class="secondary-action" href="tel:${escapeHtml(phone.replace(/[^\\d+]/g,""))}">Telefon qilish</a>` : ""}
+   <button class="secondary-action" type="button" onclick="shareListing(event, ${item.id})">Ulashish</button>
    <button class="report" type="button" onclick="reportListing(${item.id})">Shikoyat qilish</button>
   </div>`;
  document.getElementById("detailDrawer").classList.add("open");
+}
+async function shareListing(event, id){
+ if(event) event.stopPropagation();
+ const item = allListings.find(entry => Number(entry.id) === Number(id));
+ const url = listingShareUrl(id);
+ const title = item ? `${titleFor(item)} - ${formatPrice(item.price)}` : "Sigamiz e'loni";
+ const text = item ? `${titleFor(item)}: ${formatPrice(item.price)}` : "Sigamiz e'loni";
+ try{
+  if(navigator.share){
+   await navigator.share({title, text, url});
+  }else if(navigator.clipboard){
+   await navigator.clipboard.writeText(url);
+   showToast("E'lon havolasi nusxalandi.");
+  }else{
+   prompt("E'lon havolasi:", url);
+  }
+ }catch(e){}
 }
 async function toggleFavorite(event, id){
  event.stopPropagation();
@@ -685,6 +808,16 @@ function initViewFromUrl(){
   if(activeType === "all") setActiveType("offer", false);
  }
 }
+function openSharedListingFromUrl(){
+ if(sharedListingOpened) return;
+ const id = new URLSearchParams(window.location.search).get("listing");
+ if(!id) return;
+ const item = allListings.find(entry => Number(entry.id) === Number(id));
+ if(!item) return;
+ sharedListingOpened = true;
+ toggleSerpMode(true);
+ setTimeout(() => openDetail(id), 120);
+}
 function getReporterKey(){
  const storageKey = "sigamiz_reporter_key";
  let key = localStorage.getItem(storageKey);
@@ -697,14 +830,18 @@ function getReporterKey(){
 async function reportListing(id){
  const reason = prompt("Shikoyat sababi (masalan: makler, spam):");
  if(!reason) return;
- const reporterKey = encodeURIComponent(getReporterKey());
  try{
-  const response = await fetch(`/api/report?listing_id=${id}&reason=${encodeURIComponent(reason)}&reporter_key=${reporterKey}`, { method:"POST" });
+  const response = await fetch(`/api/report?listing_id=${id}&reason=${encodeURIComponent(reason)}`, { method:"POST" });
+  if(response.status === 401){
+   openAccountMenu();
+   showToast("Shikoyat yuborish uchun avval Telegram orqali kiring.");
+   return;
+  }
   if(!response.ok) throw new Error("Report failed");
   const data = await response.json();
-  alert(data.message || "Shikoyat qabul qilindi. Rahmat!");
+  showToast(data.message || "Shikoyat qabul qilindi. Rahmat!");
  }
- catch(e){ alert("Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring."); }
+ catch(e){ showToast("Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring."); }
  closeDetail();
 }
 document.getElementById("searchInput").addEventListener("input", event => {

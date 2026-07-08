@@ -16,6 +16,18 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from PIL import Image
+try:
+    from listing_service import (
+        ListingServiceError,
+        create_offer_listing,
+        decode_photo_data as service_decode_photo_data,
+    )
+except ModuleNotFoundError:
+    from backend.listing_service import (
+        ListingServiceError,
+        create_offer_listing,
+        decode_photo_data as service_decode_photo_data,
+    )
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -39,10 +51,12 @@ app = FastAPI()
 def send_admin_notification(text):
     if BOT_TOKEN and ADMIN_CHAT_ID:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        try:
-            requests.post(url, data={"chat_id": ADMIN_CHAT_ID, "text": text})
-        except Exception as e:
-            print(f"Failed to send admin notification: {e}")
+        chat_ids = [item.strip() for item in ADMIN_CHAT_ID.split(",") if item.strip()]
+        for chat_id in chat_ids:
+            try:
+                requests.post(url, data={"chat_id": chat_id, "text": text}, timeout=8)
+            except Exception as e:
+                print(f"Failed to send admin notification to {chat_id}: {e}")
 
 def send_telegram_message(chat_id, text, reply_markup=None):
     if not BOT_TOKEN or not chat_id:
@@ -292,10 +306,13 @@ def upsert_user(cursor, telegram_user_id, username=None, first_name=None, last_n
 def listing_to_dict(row, photos_by_listing=None, favorite_ids=None, viewed_map=None):
     favorite_ids = favorite_ids or set()
     viewed_map = viewed_map or {}
+    row_keys = set(row.keys())
     return {
         "id": row["id"],
         "listing_type": row["listing_type"],
         "telegram_username": row["telegram_username"],
+        "author_photo_url": row["author_photo_url"] if "author_photo_url" in row_keys else None,
+        "author_first_name": row["author_first_name"] if "author_first_name" in row_keys else None,
         "university": row["university"],
         "district": row["district"],
         "housing_type": row["housing_type"],
@@ -314,6 +331,8 @@ def listing_to_dict(row, photos_by_listing=None, favorite_ids=None, viewed_map=N
         "no_landlord_in_yard": row["no_landlord_in_yard"],
         "near_metro": row["near_metro"],
         "status": row["status"],
+        "created_at": row["created_at"],
+        "expires_at": row["expires_at"],
         "photos": (photos_by_listing or {}).get(row["id"], []),
         "is_favorite": row["id"] in favorite_ids,
         "viewed_at": viewed_map.get(row["id"]),
@@ -526,25 +545,29 @@ def get_listings(
     conn = get_db()
     cursor = conn.cursor()
     
-    query = "SELECT * FROM listings WHERE status = 'active'"
+    query = (
+        "SELECT listings.*, users.photo_url AS author_photo_url, users.first_name AS author_first_name "
+        "FROM listings LEFT JOIN users ON users.telegram_user_id = listings.telegram_user_id "
+        "WHERE listings.status = 'active'"
+    )
     params = []
     if listing_type:
-        query += " AND listing_type = ?"
+        query += " AND listings.listing_type = ?"
         params.append(listing_type)
     if district:
-        query += " AND district = ?"
+        query += " AND listings.district = ?"
         params.append(district)
     if university:
-        query += " AND university = ?"
+        query += " AND listings.university = ?"
         params.append(university)
     if preferred_gender and preferred_gender != "any":
-        query += " AND (author_gender = ? OR preferred_gender = ? OR preferred_gender = 'any')"
+        query += " AND (listings.author_gender = ? OR listings.preferred_gender = ? OR listings.preferred_gender = 'any')"
         params.extend([preferred_gender, preferred_gender])
     if price_min is not None:
-        query += " AND price_per_person >= ?"
+        query += " AND listings.price_per_person >= ?"
         params.append(price_min)
     if price_max is not None:
-        query += " AND price_per_person <= ?"
+        query += " AND listings.price_per_person <= ?"
         params.append(price_max)
     amenity_filters = {
         "has_wifi": has_wifi,
@@ -555,7 +578,7 @@ def get_listings(
     }
     for column, value in amenity_filters.items():
         if value:
-            query += f" AND {column} = 1"
+            query += f" AND listings.{column} = 1"
         
     listings = cursor.execute(query, params).fetchall()
     listing_ids = [row["id"] for row in listings]
@@ -569,13 +592,25 @@ def get_listings(
 def get_listing_detail(listing_id: int, request: Request):
     conn = get_db()
     cursor = conn.cursor()
-    listing = cursor.execute("SELECT * FROM listings WHERE id = ?", (listing_id,)).fetchone()
+    listing = cursor.execute(
+        """
+        SELECT listings.*, users.photo_url AS author_photo_url, users.first_name AS author_first_name
+        FROM listings
+        LEFT JOIN users ON users.telegram_user_id = listings.telegram_user_id
+        WHERE listings.id = ?
+        """,
+        (listing_id,),
+    ).fetchone()
     if not listing:
         conn.close()
         return {"error": "Not found"}
+    user_id = current_user_id(request)
+    if listing["status"] != "active" and listing["telegram_user_id"] != user_id:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Listing not found")
     
     photos = get_listing_photos(cursor, [listing_id]).get(listing_id, [])
-    favorite_ids, viewed_map = get_user_listing_state(cursor, current_user_id(request), [listing_id])
+    favorite_ids, viewed_map = get_user_listing_state(cursor, user_id, [listing_id])
     data = listing_to_dict(listing, {listing_id: photos}, favorite_ids, viewed_map)
     conn.close()
     return data
@@ -762,8 +797,9 @@ def get_favorites(request: Request):
     cursor = conn.cursor()
     rows = cursor.execute(
         """
-        SELECT listings.* FROM favorites
+        SELECT listings.*, users.photo_url AS author_photo_url, users.first_name AS author_first_name FROM favorites
         JOIN listings ON listings.id = favorites.listing_id
+        LEFT JOIN users ON users.telegram_user_id = listings.telegram_user_id
         WHERE favorites.telegram_user_id = ? AND listings.status = 'active'
         ORDER BY favorites.created_at DESC
         """,
@@ -907,28 +943,32 @@ def get_recommended(request: Request):
     cursor = conn.cursor()
     prefs = cursor.execute("SELECT * FROM search_preferences WHERE telegram_user_id = ?", (user_id,)).fetchone()
 
-    query = "SELECT * FROM listings WHERE status = 'active' AND listing_type = 'offer'"
+    query = (
+        "SELECT listings.*, users.photo_url AS author_photo_url, users.first_name AS author_first_name "
+        "FROM listings LEFT JOIN users ON users.telegram_user_id = listings.telegram_user_id "
+        "WHERE listings.status = 'active' AND listings.listing_type = 'offer'"
+    )
     params = []
     if prefs:
         districts = json.loads(prefs["districts"] or "[]")
         if prefs["price_min"] is not None:
-            query += " AND price_per_person >= ?"
+            query += " AND listings.price_per_person >= ?"
             params.append(prefs["price_min"])
         if prefs["price_max"] is not None:
-            query += " AND price_per_person <= ?"
+            query += " AND listings.price_per_person <= ?"
             params.append(prefs["price_max"])
         if districts:
             placeholders = ",".join("?" for _ in districts)
-            query += f" AND district IN ({placeholders})"
+            query += f" AND listings.district IN ({placeholders})"
             params.extend(districts)
         if prefs["housing_type"]:
-            query += " AND housing_type = ?"
+            query += " AND listings.housing_type = ?"
             params.append(prefs["housing_type"])
         if prefs["room_count"] is not None:
-            query += " AND room_count = ?"
+            query += " AND listings.room_count = ?"
             params.append(prefs["room_count"])
         if prefs["university"]:
-            query += " AND university = ?"
+            query += " AND listings.university = ?"
             params.append(prefs["university"])
         for column in (
             "has_wifi",
@@ -938,9 +978,9 @@ def get_recommended(request: Request):
             "near_metro",
         ):
             if prefs[column]:
-                query += f" AND {column} = 1"
+                query += f" AND listings.{column} = 1"
 
-    rows = cursor.execute(query + " ORDER BY created_at DESC, id DESC LIMIT 30", params).fetchall()
+    rows = cursor.execute(query + " ORDER BY listings.created_at DESC, listings.id DESC LIMIT 30", params).fetchall()
     listing_ids = [row["id"] for row in rows]
     photos_by_listing = get_listing_photos(cursor, listing_ids)
     favorite_ids, viewed_map = get_user_listing_state(cursor, user_id, listing_ids)
@@ -955,9 +995,11 @@ def get_my_listings(request: Request):
     cursor = conn.cursor()
     rows = cursor.execute(
         """
-        SELECT * FROM listings
-        WHERE telegram_user_id = ? AND status != 'removed'
-        ORDER BY created_at DESC, id DESC
+        SELECT listings.*, users.photo_url AS author_photo_url, users.first_name AS author_first_name
+        FROM listings
+        LEFT JOIN users ON users.telegram_user_id = listings.telegram_user_id
+        WHERE listings.telegram_user_id = ? AND listings.status != 'removed'
+        ORDER BY listings.created_at DESC, listings.id DESC
         """,
         (user_id,),
     ).fetchall()
@@ -973,122 +1015,29 @@ async def create_listing(payload: dict, request: Request):
     user_id = require_user_id(request)
     conn = get_db()
     cursor = conn.cursor()
-    user = cursor.execute("SELECT * FROM users WHERE telegram_user_id = ?", (user_id,)).fetchone()
-    if not user:
-        conn.close()
-        raise HTTPException(status_code=401, detail="Telegram login required")
-    if not user["bot_started_at"]:
-        conn.close()
-        raise HTTPException(status_code=403, detail="Bot must be started before publishing")
-    active_listing = cursor.execute(
-        "SELECT id FROM listings WHERE telegram_user_id = ? AND status IN ('active', 'hidden_pending_review')",
-        (user_id,),
-    ).fetchone()
-    if active_listing:
-        conn.close()
-        raise HTTPException(
-            status_code=409,
-            detail="Sizda allaqachon faol e'lon bor. Bitta Telegram akkaunt bitta kvartira joylay oladi.",
+    try:
+        photos = payload.get("photos") or []
+        if not isinstance(photos, list):
+            raise ListingServiceError("photos must be an array")
+        photo_bytes_list = [service_decode_photo_data(photo) for photo in photos[:5]]
+        user = cursor.execute("SELECT * FROM users WHERE telegram_user_id = ?", (user_id,)).fetchone()
+        created = create_offer_listing(
+            cursor,
+            user,
+            payload,
+            photo_bytes_list,
+            UPLOAD_DIR,
+            get_photo_insert_column(cursor),
         )
-
-    district = (payload.get("district") or "").strip()[:80]
-    university = (payload.get("university") or "").strip()[:80]
-    housing_type = (payload.get("housing_type") or "").strip()[:80]
-    description = (payload.get("description") or "").strip()[:1000]
-    phone_number = (payload.get("phone_number") or "").strip()[:40] or None
-    author_gender = (payload.get("author_gender") or "").strip()
-    preferred_gender = (payload.get("preferred_gender") or "").strip()
-    if not district or not university or not housing_type:
+    except ListingServiceError as exc:
+        conn.rollback()
         conn.close()
-        raise HTTPException(status_code=400, detail="district, university and housing_type are required")
-    if author_gender not in {"male", "female"}:
-        conn.close()
-        raise HTTPException(status_code=400, detail="author_gender must be male or female")
-    if preferred_gender not in {"male", "female", "any"}:
-        conn.close()
-        raise HTTPException(status_code=400, detail="preferred_gender must be male, female or any")
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
 
-    lat = parse_float_field(payload, "lat", minimum=40.0, maximum=42.5)
-    lng = parse_float_field(payload, "lng", minimum=68.0, maximum=71.5)
-    price = parse_int_field(payload, "price", minimum=1, maximum=100_000_000)
-    people_needed = parse_int_field(payload, "people_needed", minimum=1, maximum=10)
-    room_count = parse_int_field(payload, "room_count", minimum=1, maximum=20)
-    photos = payload.get("photos") or []
-    if not isinstance(photos, list):
-        conn.close()
-        raise HTTPException(status_code=400, detail="photos must be an array")
-    photos = photos[:5]
-
-    cursor.execute(
-        """
-        INSERT INTO listings (
-            telegram_user_id, telegram_username, listing_type, university, district, housing_type,
-            description, phone_number, room_count, author_gender, preferred_gender,
-            lat, lng, price_per_person, people_needed,
-            has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, status, expires_at
-        )
-        VALUES (?, ?, 'offer', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now', '+7 days'))
-        """,
-        (
-            user_id,
-            user["telegram_username"] or "",
-            university,
-            district,
-            housing_type,
-            description or None,
-            phone_number,
-            room_count,
-            author_gender,
-            preferred_gender,
-            lat,
-            lng,
-            price,
-            people_needed,
-            bool_from_payload(payload, "has_wifi"),
-            bool_from_payload(payload, "has_ac"),
-            bool_from_payload(payload, "has_washing_machine"),
-            bool_from_payload(payload, "no_landlord_in_yard"),
-            bool_from_payload(payload, "near_metro"),
-        ),
-    )
-    listing_id = cursor.lastrowid
-    photo_column = get_photo_insert_column(cursor)
-    listing_dir = os.path.join(UPLOAD_DIR, str(listing_id))
-    os.makedirs(listing_dir, exist_ok=True)
-
-    duplicate_matches = []
-    for index, photo in enumerate(photos):
-        photo_bytes = decode_photo_data(photo)
-        try:
-            image = Image.open(io.BytesIO(photo_bytes))
-            image.verify()
-            image = Image.open(io.BytesIO(photo_bytes))
-        except Exception:
-            conn.rollback()
-            conn.close()
-            raise HTTPException(status_code=400, detail="photo is not a valid image")
-        image_hash = average_image_hash(image)
-        similar = find_similar_photo(cursor, image_hash)
-        if similar:
-            duplicate_matches.append(similar)
-        if image.width > 1200:
-            ratio = 1200 / float(image.width)
-            image = image.resize((1200, int(float(image.height) * ratio)), Image.Resampling.LANCZOS)
-        file_path = os.path.join(listing_dir, f"{index}.jpg")
-        image.convert("RGB").save(file_path, "JPEG", quality=80)
-        cursor.execute(
-            f"INSERT INTO listing_photos (listing_id, {photo_column}, sort_order) VALUES (?, ?, ?)",
-            (listing_id, file_path, index),
-        )
-        cursor.execute(
-            "INSERT INTO listing_photo_hashes (listing_id, photo_hash) VALUES (?, ?)",
-            (listing_id, image_hash),
-        )
-
-    status = "active"
+    listing_id = created["listing_id"]
+    status = created["status"]
+    duplicate_matches = created["duplicate_matches"]
     if duplicate_matches:
-        status = "hidden_pending_review"
-        cursor.execute("UPDATE listings SET status = ? WHERE id = ?", (status, listing_id))
         first_match = duplicate_matches[0]
         send_admin_notification(
             f"Yangi e'lon foto bo'yicha dublikatga o'xshaydi va tekshiruvga yashirildi.\n"
@@ -1099,7 +1048,7 @@ async def create_listing(payload: dict, request: Request):
             f"Ban qilish: /review {listing_id} ban"
         )
 
-    listing = cursor.execute("SELECT * FROM listings WHERE id = ?", (listing_id,)).fetchone()
+    listing = created["listing"]
     notified_count = notify_matching_search_preferences(cursor, listing) if status == "active" else 0
     conn.commit()
     photos_by_listing = get_listing_photos(cursor, [listing_id])
@@ -1108,22 +1057,25 @@ async def create_listing(payload: dict, request: Request):
     return {"ok": True, "status": status, "listing": result, "duplicate_matches": duplicate_matches[:3], "notified_count": notified_count}
 
 @app.post("/api/report")
-async def report_listing(listing_id: int, reason: str, reporter_id: int = 0, reporter_key: str | None = None):
-    normalized_reporter_key = (reporter_key or "").strip()[:128]
-    if not normalized_reporter_key and reporter_id:
-        normalized_reporter_key = f"telegram:{reporter_id}"
-    if not normalized_reporter_key:
-        raise HTTPException(status_code=400, detail="Reporter identity is required")
+async def report_listing(listing_id: int, reason: str, request: Request):
+    reporter_id = require_user_id(request)
+    normalized_reporter_key = f"telegram:{reporter_id}"
 
     conn = get_db()
     cursor = conn.cursor()
     owner_row = cursor.execute(
-        "SELECT telegram_user_id, report_count FROM listings WHERE id = ?",
+        "SELECT telegram_user_id, report_count, status FROM listings WHERE id = ?",
         (listing_id,),
     ).fetchone()
     if not owner_row:
         conn.close()
         raise HTTPException(status_code=404, detail="Listing not found")
+    if owner_row["status"] != "active":
+        conn.close()
+        raise HTTPException(status_code=404, detail="Listing not found")
+    if owner_row["telegram_user_id"] == reporter_id:
+        conn.close()
+        raise HTTPException(status_code=400, detail="You cannot report your own listing")
 
     report_columns = {row[1] for row in cursor.execute("PRAGMA table_info(reports)").fetchall()}
     reporter_column = None

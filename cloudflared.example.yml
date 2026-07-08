@@ -1,0 +1,9 @@
+# Copy to /etc/cloudflared/config.yml after creating the tunnel.
+# Replace the placeholders with values printed by `cloudflared tunnel create sigamiz`.
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /etc/cloudflared/YOUR_TUNNEL_ID.json
+
+ingress:
+  - hostname: YOUR_DOMAIN
+    service: http://127.0.0.1:8000
+  - service: http_status:404

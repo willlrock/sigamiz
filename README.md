@@ -13,6 +13,7 @@ Feature documentation lives in [FEATURES.md](FEATURES.md).
 - `frontend/` - Static HTML/CSS/JS pages for landing, map, and about.
 - `uploads/` - Runtime photo storage, ignored by git.
 - `*.service`, `klapa.nginx.conf` - Deployment examples.
+- `CLOUDFLARE_TUNNEL.md`, `cloudflared.example.yml` - Cloudflare Tunnel setup for servers without a static public IP.
 
 ## Environment
 

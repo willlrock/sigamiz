@@ -121,6 +121,8 @@ async function mountTelegramLogin(){
  const botLink=document.getElementById("botLink");
  if(config.bot_username) botLink.href=`https://t.me/${config.bot_username}?start=start`;
  document.getElementById("loginBtn").onclick=()=>document.getElementById("telegramLogin").scrollIntoView({behavior:"smooth",block:"center"});
+ const target=document.getElementById("telegramLogin");
+ target.innerHTML="";
  if(config.telegram_client_id){
   window.onTelegramAuth=telegramAuth;
   const button=document.createElement("button");
@@ -133,11 +135,15 @@ async function mountTelegramLogin(){
   script.dataset.clientId=config.telegram_client_id;
   script.dataset.onauth="onTelegramAuth(data)";
   script.dataset.requestAccess="write";
-  const target=document.getElementById("telegramLogin");
-  target.innerHTML="";
   target.appendChild(button);
   target.appendChild(script);
  }
+ const fallback=document.createElement("button");
+ fallback.className="ghost";
+ fallback.type="button";
+ fallback.textContent="Bot orqali kirish";
+ fallback.onclick=startBotLogin;
+ target.appendChild(fallback);
 }
 async function loadMe(){
  const data=await fetch("/api/me").then(res=>res.json());

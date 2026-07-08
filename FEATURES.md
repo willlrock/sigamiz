@@ -14,7 +14,7 @@ Sigamiz helps students find shared housing in Tashkent while reducing broker spa
 - Telegram `auth_date` is required and expires after 24 hours.
 - If Telegram auth is not configured, the backend fails closed instead of accepting unsigned user ids.
 - Web sessions are signed with `SESSION_SECRET`, which must be separate from `BOT_TOKEN`.
-- A bot deep-link login exists in code as a fallback, but the visible UI currently hides it while the primary Telegram Login Widget flow is being verified.
+- A bot deep-link login is visible as a fallback on web login surfaces when the Telegram Login Widget is unavailable or inconvenient.
 
 ## Publishing
 
@@ -31,9 +31,10 @@ Sigamiz helps students find shared housing in Tashkent while reducing broker spa
 - If Yandex Maps cannot load, the map falls back to the previous Leaflet/OpenStreetMap renderer.
 - Students can filter by price, amenities, district/university text search, and sort by price.
 - Listing cards show price, district/university, photos, amenities, and contact actions.
+- Listing cards and detail views include a share action that opens native sharing when available and falls back to copying a deep link.
 - The top map navigation keeps `Map`, `About`, and `How it works`; favorites live under the account menu.
 - The account icon opens a menu with Telegram login, favorites, and publishing links.
-- Users can report suspicious listings. After 3 reports, the listing is hidden for admin review.
+- Logged-in users can report suspicious listings. After 3 unique Telegram-account reports, the listing is hidden for admin review.
 
 ## Telegram Bot
 
@@ -51,7 +52,7 @@ Sigamiz helps students find shared housing in Tashkent while reducing broker spa
 ## Moderation And Anti-Broker Logic
 
 - One active listing per Telegram account reduces repeated broker inventory.
-- Duplicate-looking photos are detected with image hashes and can send a listing to `hidden_pending_review`.
+- Duplicate-looking photos are detected with image hashes from both website and bot publishing flows and can send a listing to `hidden_pending_review`.
 - Admins receive review commands:
 
 ```text
@@ -71,3 +72,4 @@ Sigamiz helps students find shared housing in Tashkent while reducing broker spa
 - `bot/main.py` - Telegram bot flows for publishing, search, saved preferences, listing management.
 - `backend/schema.sql` - SQLite base schema.
 - `backend/seed.py` - idempotently recreates 10 generated test listings for manual map/favorites QA.
+- `CLOUDFLARE_TUNNEL.md` - Cloudflare Tunnel deployment notes for servers without a static public IP.

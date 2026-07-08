@@ -4,6 +4,7 @@ import math
 import os
 import random
 import sqlite3
+import sys
 import threading
 import traceback
 from contextlib import contextmanager
@@ -25,6 +26,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 SESSION_PATH = os.path.join(BASE_DIR, "bot_sessions.json")
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+from backend.listing_service import ListingServiceError, create_offer_listing
 
 bot = telebot.TeleBot(TOKEN, use_class_middlewares=True)
 
@@ -455,6 +459,16 @@ def is_admin_chat(message):
     return str(message.chat.id) in allowed_ids
 
 
+def send_admin_notification(text):
+    if not ADMIN_CHAT_ID:
+        return
+    for chat_id in [item.strip() for item in ADMIN_CHAT_ID.split(",") if item.strip()]:
+        try:
+            bot.send_message(chat_id, text)
+        except Exception as exc:
+            print(f"Failed to send admin notification to {chat_id}: {exc}")
+
+
 def has_active_listing(user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -474,6 +488,55 @@ def get_listing_photo_column(cursor):
     if "file_path" in columns:
         return "file_path"
     return "file_path"
+
+
+def ensure_listing_photo_hashes_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS listing_photo_hashes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            listing_id INTEGER NOT NULL,
+            photo_hash TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (listing_id) REFERENCES listings (id)
+        )
+    """)
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_listing_photo_hashes_hash ON listing_photo_hashes (photo_hash)"
+    )
+
+
+def average_image_hash(image):
+    small = image.convert("L").resize((8, 8), Image.Resampling.LANCZOS)
+    values = list(small.getdata())
+    avg = sum(values) / len(values)
+    bits = "".join("1" if value >= avg else "0" for value in values)
+    return f"{int(bits, 2):016x}"
+
+
+def hash_distance(left, right):
+    try:
+        return (int(left, 16) ^ int(right, 16)).bit_count()
+    except (TypeError, ValueError):
+        return 64
+
+
+def find_similar_photo(cursor, photo_hash, max_distance=8):
+    ensure_listing_photo_hashes_table(cursor)
+    rows = cursor.execute(
+        """
+        SELECT listing_photo_hashes.listing_id, listing_photo_hashes.photo_hash
+        FROM listing_photo_hashes
+        JOIN listings ON listings.id = listing_photo_hashes.listing_id
+        WHERE listings.status IN ('active', 'hidden_pending_review')
+        ORDER BY listing_photo_hashes.id DESC
+        LIMIT 500
+        """
+    ).fetchall()
+    for row in rows:
+        distance = hash_distance(photo_hash, row["photo_hash"])
+        if distance <= max_distance:
+            return {"listing_id": row["listing_id"], "distance": distance}
+    return None
 
 
 def amenities_markup(prefix="amenity"):
@@ -992,55 +1055,57 @@ def save_listing_to_db(user_id, chat_id, username=None):
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO listings (
-                telegram_user_id, telegram_username, listing_type, university, district, housing_type,
-                description, phone_number, room_count, author_gender, preferred_gender,
-                lat, lng, price_per_person, people_needed,
-                has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, expires_at
-            )
-            VALUES (?, ?, 'offer', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))
-            """,
-            (
-                user_id,
-                username or "",
-                data.get("university"),
-                data.get("district"),
-                data.get("housing_type"),
-                data.get("description"),
-                data.get("phone"),
-                data.get("room_count"),
-                data.get("author_gender"),
-                data.get("preferred_gender"),
-                data["lat"],
-                data["lng"],
-                data["price"],
-                needed_int,
-                amenity_flags["has_wifi"],
-                amenity_flags["has_ac"],
-                amenity_flags["has_washing_machine"],
-                amenity_flags["no_landlord_in_yard"],
-                amenity_flags["near_metro"],
-            ),
-        )
-        listing_id = cursor.lastrowid
-        photo_column = get_listing_photo_column(cursor)
-
-        os.makedirs(os.path.join(UPLOAD_DIR, str(listing_id)), exist_ok=True)
-        for i, file_id in enumerate(data.get("photos", [])):
+        photo_bytes_list = []
+        for file_id in data.get("photos", []):
             file_info = bot.get_file(file_id)
-            downloaded_file = bot.download_file(file_info.file_path)
-            img = Image.open(io.BytesIO(downloaded_file))
-            if img.width > 1200:
-                ratio = 1200 / float(img.width)
-                height = int(float(img.height) * ratio)
-                img = img.resize((1200, height), Image.Resampling.LANCZOS)
-            file_path = os.path.join(UPLOAD_DIR, str(listing_id), f"{i}.jpg")
-            img.save(file_path, "JPEG", quality=80)
-            cursor.execute(f"INSERT INTO listing_photos (listing_id, {photo_column}) VALUES (?, ?)", (listing_id, file_path))
-
-        notify_matching_search_preferences(cursor, listing_id)
+            photo_bytes_list.append(bot.download_file(file_info.file_path))
+        payload = {
+            "university": data.get("university"),
+            "district": data.get("district"),
+            "housing_type": data.get("housing_type"),
+            "description": data.get("description"),
+            "phone_number": data.get("phone"),
+            "room_count": data.get("room_count"),
+            "author_gender": data.get("author_gender"),
+            "preferred_gender": data.get("preferred_gender"),
+            "lat": data["lat"],
+            "lng": data["lng"],
+            "price": data["price"],
+            "people_needed": needed_int,
+            **amenity_flags,
+        }
+        user = {
+            "telegram_user_id": user_id,
+            "telegram_username": username or "",
+            "bot_started_at": True,
+        }
+        try:
+            created = create_offer_listing(
+                cursor,
+                user,
+                payload,
+                photo_bytes_list,
+                UPLOAD_DIR,
+                get_listing_photo_column(cursor),
+            )
+        except ListingServiceError:
+            conn.rollback()
+            conn.close()
+            raise
+        listing_id = created["listing_id"]
+        duplicate_matches = created["duplicate_matches"]
+        if duplicate_matches:
+            first_match = duplicate_matches[0]
+            send_admin_notification(
+                f"Yangi e'lon bot orqali foto bo'yicha dublikatga o'xshaydi va tekshiruvga yashirildi.\n"
+                f"E'lon: {listing_id}\n"
+                f"O'xshash e'lon: {first_match['listing_id']}\n"
+                f"Masofa: {first_match['distance']}\n\n"
+                f"Tasdiqlash: /review {listing_id} approve\n"
+                f"Ban qilish: /review {listing_id} ban"
+            )
+        else:
+            notify_matching_search_preferences(cursor, listing_id)
         conn.commit()
         conn.close()
         return listing_id
