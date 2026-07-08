@@ -55,6 +55,29 @@ Open:
 - `http://127.0.0.1:8000/xarita`
 - `http://127.0.0.1:8000/about`
 
+## Railway Web Deploy
+
+The repository includes `railpack.json` so Railway/Railpack can start the web app explicitly:
+
+```bash
+uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
+
+Set at least these Railway variables:
+
+```env
+SITE_URL=https://your-railway-domain-or-custom-domain
+SESSION_SECRET=generate_a_long_random_secret
+BOT_TOKEN=your_telegram_bot_token
+BOT_USERNAME=Sigamiz_bot
+```
+
+Deploy the Telegram bot as a separate worker/service with:
+
+```bash
+python bot/main.py
+```
+
 ## Moderation
 
 After three reports, an active listing is moved to `hidden_pending_review` and the admin chat receives review commands:
