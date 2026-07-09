@@ -3,7 +3,6 @@ import json
 import math
 import os
 import random
-import sqlite3
 import sys
 import threading
 import traceback
@@ -28,6 +27,7 @@ UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 SESSION_PATH = os.path.join(BASE_DIR, "bot_sessions.json")
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
+from backend.db import get_db
 from backend.listing_service import ListingServiceError, create_offer_listing
 
 bot = telebot.TeleBot(TOKEN, use_class_middlewares=True)
@@ -260,7 +260,7 @@ def detect_district(lat, lng):
 
 
 def is_banned(user_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM banned_users WHERE telegram_user_id = ?", (user_id,))
     res = cursor.fetchone()
@@ -269,7 +269,7 @@ def is_banned(user_id):
 
 
 def mark_bot_started(user):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -318,7 +318,7 @@ def ensure_web_login_tokens_table(cursor):
 def confirm_web_login_token(token, user):
     if not token:
         return False
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     ensure_web_login_tokens_table(cursor)
     cursor.execute(
@@ -358,7 +358,7 @@ def ensure_search_preferences_table(cursor):
 def save_search_preferences(user_id, data):
     district = data.get("s_district")
     amenities = set(data.get("s_amenities", []))
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     ensure_search_preferences_table(cursor)
     cursor.execute(
@@ -470,7 +470,7 @@ def send_admin_notification(text):
 
 
 def has_active_listing(user_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
         "SELECT 1 FROM listings WHERE telegram_user_id = ? AND status IN ('active', 'hidden_pending_review')",
@@ -610,8 +610,7 @@ def review_listing(message):
         return
 
     action = parts[2]
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = get_db()
     cursor = conn.cursor()
     listing = cursor.execute(
         "SELECT id, telegram_user_id, status FROM listings WHERE id = ?",
@@ -1052,8 +1051,7 @@ def save_listing_to_db(user_id, chat_id, username=None):
         needed_val = data.get("needed")
         needed_int = 3 if needed_val == "3" else int(needed_val)
 
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = get_db()
         cursor = conn.cursor()
         photo_bytes_list = []
         for file_id in data.get("photos", []):
@@ -1287,8 +1285,7 @@ def run_search_and_reply(user_id, chat_id):
             query += f" AND {column} = 1"
     query += " ORDER BY created_at DESC LIMIT 30"
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = get_db()
     cursor = conn.cursor()
     results = cursor.execute(query, params).fetchall()
     conn.close()
@@ -1340,8 +1337,7 @@ def run_search_and_reply(user_id, chat_id):
 @bot.message_handler(commands=["my"])
 def my_listings(message):
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM listings WHERE telegram_user_id = ? AND status IN ('active', 'hidden_pending_review')",
@@ -1375,7 +1371,7 @@ def my_listings(message):
 def handle_manage_listing(call):
     action, listing_id_str = call.data.split("_", 1)
     listing_id = int(listing_id_str)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT telegram_user_id FROM listings WHERE id = ?", (listing_id,))
     row = cursor.fetchone()

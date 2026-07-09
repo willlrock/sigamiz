@@ -257,7 +257,7 @@
  <input type="text" id="searchInput" placeholder="Universitet yoki tuman qidirish...">
  </div>
  <div class="stat" id="listingCount">— ta joy</div>
- <a class="btn-add" href="https://t.me/klapa_net_bot?start=add" target="_blank">
+ <a class="btn-add" data-bot-start="add" href="https://t.me/klapa_net_bot?start=add" target="_blank">
  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
  Joy qo'shish
  </a>
@@ -292,7 +292,7 @@
  <a href="/savollar">Savollar</a>
  </nav>
  <div class="sidebar-footer">
- <a class="btn-add" style="width:100%;justify-content:center;" href="https://t.me/klapa_net_bot?start=add" target="_blank">Joy qo'shish</a>
+ <a class="btn-add" style="width:100%;justify-content:center;" data-bot-start="add" href="https://t.me/klapa_net_bot?start=add" target="_blank">Joy qo'shish</a>
  </div>
 </div>
 
@@ -315,6 +315,15 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+async function updateBotLinks(){
+ const config = await fetch("/api/config").then(res => res.json()).catch(() => ({}));
+ if(!config.bot_username) return;
+ document.querySelectorAll("[data-bot-start]").forEach(link => {
+  const start = link.dataset.botStart || "start";
+  link.href = `https://t.me/${encodeURIComponent(config.bot_username)}?start=${encodeURIComponent(start)}`;
+ });
+}
+updateBotLinks();
 // ---------- Map setup ----------
 const map = L.map('map', { zoomControl: false }).setView([41.2995, 69.2401], 12);
 L.control.zoom({ position: 'bottomright' }).addTo(map);

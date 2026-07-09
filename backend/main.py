@@ -7,7 +7,6 @@ import io
 import hashlib
 import hmac
 import json
-import sqlite3
 import os
 import requests
 import secrets
@@ -28,6 +27,10 @@ except ModuleNotFoundError:
         create_offer_listing,
         decode_photo_data as service_decode_photo_data,
     )
+try:
+    from db import execute_schema, get_db
+except ModuleNotFoundError:
+    from backend.db import execute_schema, get_db
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -193,13 +196,11 @@ def migrate_db(cursor):
     )
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     
     # Apply base schema and lightweight migrations for existing SQLite files.
-    with open(os.path.join(BASE_DIR, "backend", "schema.sql"), "r", encoding="utf-8") as f:
-        schema = f.read()
-    cursor.executescript(schema)
+    execute_schema(cursor)
     migrate_db(cursor)
         
     # Seed demo data only when explicitly enabled.
@@ -227,7 +228,7 @@ init_db()
 
 # Expiration cleanup
 def delete_expired_listings():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     now = datetime.now()
     cursor.execute("UPDATE listings SET status = 'expired' WHERE expires_at < ?", (now,))
@@ -239,12 +240,6 @@ def delete_expired_listings():
 scheduler = BackgroundScheduler()
 scheduler.add_job(delete_expired_listings, 'interval', days=1)
 scheduler.start()
-
-# API
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds")

@@ -165,8 +165,9 @@ def create_offer_listing(cursor, user, payload, photo_bytes_list, upload_dir, ph
     values = validate_offer_payload(payload)
     photo_bytes_list = list(photo_bytes_list or [])[:5]
 
+    returning_id = " RETURNING id" if getattr(cursor, "is_postgres", False) else ""
     cursor.execute(
-        """
+        f"""
         INSERT INTO listings (
             telegram_user_id, telegram_username, listing_type, university, district, housing_type,
             description, phone_number, room_count, author_gender, preferred_gender,
@@ -174,6 +175,7 @@ def create_offer_listing(cursor, user, payload, photo_bytes_list, upload_dir, ph
             has_wifi, has_ac, has_washing_machine, no_landlord_in_yard, near_metro, status, expires_at
         )
         VALUES (?, ?, 'offer', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now', '+7 days'))
+        {returning_id}
         """,
         (
             user["telegram_user_id"],
@@ -197,7 +199,7 @@ def create_offer_listing(cursor, user, payload, photo_bytes_list, upload_dir, ph
             values["near_metro"],
         ),
     )
-    listing_id = cursor.lastrowid
+    listing_id = cursor.fetchone()[0] if getattr(cursor, "is_postgres", False) else cursor.lastrowid
     listing_dir = os.path.join(upload_dir, str(listing_id))
     os.makedirs(listing_dir, exist_ok=True)
     ensure_listing_photo_hashes_table(cursor)

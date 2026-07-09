@@ -46,6 +46,17 @@
  </section>
  <section class="section wrap"><div class="vision"><div class="icon"><span class="material-symbols-outlined">diversity_3</span></div><h2>Making Tashkent accessible for every student.</h2><p>By combining a map-first interface, simple listing types and direct contact tools, Sigamiz removes friction from student housing so students can focus on studying and building their future.</p></div></section>
 </main>
-<footer><div class="footer-inner"><div><div class="footer-brand">Sigamiz</div><div style="color:var(--muted);font-size:13px">2026 Sigamiz. Built by students for students.</div></div><div class="links"><a href="/xarita">Map</a><a href="https://t.me/klapa_net_bot?start=add" target="_blank">Telegram Bot</a><a href="#safety">Safety Tips</a></div></div></footer>
+<footer><div class="footer-inner"><div><div class="footer-brand">Sigamiz</div><div style="color:var(--muted);font-size:13px">2026 Sigamiz. Built by students for students.</div></div><div class="links"><a href="/xarita">Map</a><a data-bot-start="add" href="https://t.me/klapa_net_bot?start=add" target="_blank">Telegram Bot</a><a href="#safety">Safety Tips</a></div></div></footer>
+<script>
+async function updateBotLinks(){
+ const config = await fetch("/api/config").then(res => res.json()).catch(() => ({}));
+ if(!config.bot_username) return;
+ document.querySelectorAll("[data-bot-start]").forEach(link => {
+  const start = link.dataset.botStart || "start";
+  link.href = `https://t.me/${encodeURIComponent(config.bot_username)}?start=${encodeURIComponent(start)}`;
+ });
+}
+updateBotLinks();
+</script>
 </body>
 </html>

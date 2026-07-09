@@ -1,9 +1,9 @@
-import os
-import sqlite3
 from datetime import datetime, timedelta
 
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "database.db")
+try:
+    from db import get_db
+except ModuleNotFoundError:
+    from backend.db import get_db
 
 
 TEST_LISTINGS = [
@@ -17,11 +17,26 @@ TEST_LISTINGS = [
     ("test_listing_08", "TTA", "Yashnobod", "Kvartira", 2, 41.2960, 69.3700, 700000, 2, 1, 0, 0, 1, 0, "Yashnobodda TTAga borish qulay."),
     ("test_listing_09", "Other", "Uchtepa", "Xonadonli uy", 3, 41.3030, 69.1660, 600000, 2, 0, 0, 1, 1, 0, "Uchtepada hovlili uy, tinch mahalla."),
     ("test_listing_10", "Other", "Sergeli", "Kvartira", 2, 41.2260, 69.2200, 550000, 1, 1, 1, 0, 0, 0, "Sergelida byudjet variant, avtobus bekatiga yaqin."),
+    ("test_listing_11", "TATU", "Olmazor", "Kvartira", 2, 41.3480, 69.2140, 820000, 1, 1, 0, 1, 0, 1, "Olmazorda TATUga qatnash uchun qulay, metro yaqin."),
+    ("test_listing_12", "TSUL", "Shayxontohur", "Kvartira", 3, 41.3220, 69.2450, 980000, 2, 1, 1, 1, 1, 0, "Shayxontohur markazida toza kvartira, talabalar uchun."),
+    ("test_listing_13", "TDIU", "Mirobod", "Kvartira", 2, 41.3035, 69.2855, 1150000, 1, 1, 1, 1, 0, 1, "Mirobodda biznes markazlarga yaqin, sharoiti yaxshi."),
+    ("test_listing_14", "MDIS", "Yakkasaroy", "Xonadonli uy", 3, 41.2790, 69.2600, 780000, 2, 0, 1, 1, 1, 0, "Yakkasaroyda hovlili uy, egasi boshqa joyda yashaydi."),
+    ("test_listing_15", "TTA", "Mirzo-Ulug'bek", "Kvartira", 1, 41.3230, 69.3345, 690000, 1, 1, 0, 0, 0, 1, "Mirzo-Ulug'bekda ixcham xona, avtobus bekati yonida."),
+    ("test_listing_16", "O'zMU", "Olmazor", "Yotoqxona", 4, 41.3560, 69.2100, 450000, 3, 1, 0, 1, 0, 0, "O'zMUga yaqin yotoqxona uslubidagi arzon joy."),
+    ("test_listing_17", "WIUT", "Chilonzor", "Kvartira", 3, 41.2765, 69.2055, 1000000, 2, 1, 1, 1, 1, 1, "Chilonzorda metroga 7 daqiqa, yangi remont."),
+    ("test_listing_18", "INHA", "Yunusobod", "Kvartira", 2, 41.3620, 69.2905, 1250000, 1, 1, 1, 1, 0, 1, "Yunusobodda INHA tomonga qatnash oson, xona keng."),
+    ("test_listing_19", "Other", "Bektemir", "Xonadonli uy", 3, 41.2110, 69.3370, 500000, 2, 0, 0, 1, 1, 0, "Bektemirda sokin hovli, byudjet variant."),
+    ("test_listing_20", "TMI", "Sergeli", "Kvartira", 2, 41.2320, 69.2180, 620000, 1, 1, 0, 1, 0, 0, "Sergelida yangi uy, avtobus va do'konlar yaqin."),
+    ("test_listing_21", "TSUULL", "Uchtepa", "Kvartira", 3, 41.2990, 69.1740, 720000, 2, 1, 1, 0, 1, 0, "Uchtepada talaba qizlar uchun tartibli kvartira."),
+    ("test_listing_22", "TATU", "Yashnobod", "Kvartira", 2, 41.2920, 69.3600, 870000, 1, 1, 1, 1, 0, 1, "Yashnobodda internet va konditsioner bor, metro tomonga qulay."),
+    ("test_listing_23", "TTA", "Mirobod", "Kvartira", 4, 41.2925, 69.2920, 1350000, 3, 1, 1, 1, 1, 1, "Mirobodda katta kvartira, 3 ta joy bo'sh."),
+    ("test_listing_24", "MDIS", "Yakkasaroy", "Kvartira", 2, 41.2875, 69.2580, 950000, 1, 1, 0, 1, 0, 1, "Yakkasaroyda MDISga yaqin, toza va yorug' xona."),
+    ("test_listing_25", "Other", "Yunusobod", "Xonadonli uy", 3, 41.3710, 69.2810, 760000, 2, 0, 1, 1, 1, 0, "Yunusobodda hovlili uy, tinch mahalla va do'konlar yaqin."),
 ]
 
 
 def seed():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     cursor = conn.cursor()
     expires_at = datetime.now() + timedelta(days=14)
 

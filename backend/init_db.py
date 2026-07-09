@@ -1,24 +1,23 @@
-import sqlite3
 import os
+try:
+    from db import execute_schema, get_db
+except ModuleNotFoundError:
+    from backend.db import execute_schema, get_db
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(BASE_DIR, "database.db")
-schema_path = os.path.join(BASE_DIR, "schema.sql")
 
 def init_db():
-    if os.path.exists(db_path):
+    if not os.getenv("DATABASE_URL") and os.path.exists(db_path):
         print(f"{db_path} already exists. Skipping creation.")
         return
 
-    with open(schema_path, 'r', encoding='utf-8') as f:
-        schema = f.read()
-
-    conn = sqlite3.connect(db_path)
+    conn = get_db()
     cursor = conn.cursor()
-    cursor.executescript(schema)
+    execute_schema(cursor)
     conn.commit()
     conn.close()
-    print(f"Database {db_path} initialized successfully.")
+    print("Database initialized successfully.")
 
 if __name__ == "__main__":
     init_db()

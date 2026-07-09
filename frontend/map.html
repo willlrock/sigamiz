@@ -251,7 +251,7 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
     <button class="chip" data-filter="near_metro" type="button" title="Metro"><span class="material-symbols-outlined" data-fallback="=">train</span><span class="chip-label">Metro</span></button>
    </div>
   </div>
-  <a class="fab" href="https://t.me/klapa_net_bot?start=add" target="_blank">
+  <a class="fab" data-bot-start="add" href="https://t.me/klapa_net_bot?start=add" target="_blank">
    <span class="material-symbols-outlined" data-fallback=">">send</span>
    Telegram Bot
   </a>
@@ -334,6 +334,14 @@ function showToast(html){
 function getAppConfig(){
  if(!appConfigPromise) appConfigPromise = fetch("/api/config").then(res => res.json()).catch(() => ({}));
  return appConfigPromise;
+}
+async function updateBotLinks(){
+ const config = await getAppConfig();
+ if(!config.bot_username) return;
+ document.querySelectorAll("[data-bot-start]").forEach(link => {
+  const start = link.dataset.botStart || "start";
+  link.href = `https://t.me/${encodeURIComponent(config.bot_username)}?start=${encodeURIComponent(start)}`;
+ });
 }
 function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " so'm"; }
 function compactPrice(value){
@@ -915,6 +923,7 @@ setActiveType("offer", false);
 initViewFromUrl();
 updatePriceChip();
 loadMe();
+updateBotLinks();
 mountTelegramLogin();
 initMap().then(loadListings);
 </script>

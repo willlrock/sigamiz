@@ -220,11 +220,20 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
 <footer>
  <div class="footer-inner">
   <div><div class="footer-brand">Sigamiz</div><div style="color:var(--muted);font-size:13px">2026 Sigamiz. Built by students for students.</div></div>
-  <div class="footer-links"><a href="/about">About</a><a href="/xarita">Map</a><a href="https://t.me/klapa_net_bot?start=add" target="_blank">Telegram Bot</a><a href="/about#safety">Safety Tips</a></div>
+  <div class="footer-links"><a href="/about">About</a><a href="/xarita">Map</a><a data-bot-start="add" href="https://t.me/klapa_net_bot?start=add" target="_blank">Telegram Bot</a><a href="/about#safety">Safety Tips</a></div>
  </div>
 </footer>
 
 <script>
+async function updateBotLinks(){
+ const config = await fetch("/api/config").then(res => res.json()).catch(() => ({}));
+ if(!config.bot_username) return;
+ document.querySelectorAll("[data-bot-start]").forEach(link => {
+  const start = link.dataset.botStart || "start";
+  link.href = `https://t.me/${encodeURIComponent(config.bot_username)}?start=${encodeURIComponent(start)}`;
+ });
+}
+updateBotLinks();
 const DEMO_LISTINGS = [
  {id:1, listing_type:"offer", university:"TATU", district:"Yunusobod", housing_type:"Kvartira", room_count:3, description:"3 xonali kvartira, 2 ta bola kerak. TATU ga yaqin.", price:700000, people_needed:2, has_wifi:1, has_ac:0, has_washing_machine:1, near_metro:1, telegram_username:"aziz_tatu", photos:["https://lh3.googleusercontent.com/aida-public/AB6AXuA-1dOpV1KSbu1vAHSzusu2RnGHUkL2tTLWzkhb2gcBqWHoFRmHxJhGsFhi0pK0z77TPd9S6JZuDyOcWyGB7QAUQSClwiLdoU1uRPrrVafwWaqAARlpPUof59TgHigEXDdEsgfEVV6QwaEhrd98WJitPRRaaosIKP_MzoAEf4p-ORxg352gWCEjF1QH4yV1hB8wPB4e-jipp9QF8jQhbvT3MPfkwJDEU5Puf2X70pzLmcGoP13bIz0fOMl0HP_a9Wz9-8A4lAbB7os"]},
  {id:3, listing_type:"offer", university:"INHA", district:"Mirzo-Ulug'bek", housing_type:"Xonadonli uy", room_count:2, description:"Sokin joy, internet bor, hovlida xojayin turmaydi.", price:850000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:1, telegram_username:"nigina_inha", photos:[]}
