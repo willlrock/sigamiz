@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SQLITE_DB_PATH = os.path.join(BASE_DIR, "backend", "database.db")
+SQLITE_DB_PATH = os.getenv("SIGAMIZ_DB_PATH") or os.path.join(BASE_DIR, "backend", "database.db")
 SCHEMA_PATH = os.path.join(BASE_DIR, "backend", "schema.sql")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -34,6 +34,7 @@ def _translate_postgres_sql(sql):
     sql = re.sub(r"datetime\('now',\s*'\+7 days'\)", "(CURRENT_TIMESTAMP + INTERVAL '7 days')", sql, flags=re.I)
     sql = re.sub(r"datetime\('now',\s*'\+10 minutes'\)", "(CURRENT_TIMESTAMP + INTERVAL '10 minutes')", sql, flags=re.I)
     sql = re.sub(r"datetime\('now'\)", "CURRENT_TIMESTAMP", sql, flags=re.I)
+    sql = re.sub(r"\bdatetime\(([a-z_][a-z0-9_.]*)\)", r"\1", sql, flags=re.I)
 
     if re.match(r"^INSERT\s+OR\s+REPLACE\s+INTO\s+banned_users", sql, flags=re.I):
         sql = re.sub(r"^INSERT\s+OR\s+REPLACE\s+", "INSERT ", sql, flags=re.I)
@@ -149,9 +150,11 @@ class PostgresConnection:
 def get_db():
     if is_postgres():
         psycopg2, extras = _postgres_module()
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=extras.DictCursor)
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=extras.DictCursor, options="-c timezone=UTC")
         return PostgresConnection(conn)
-    conn = sqlite3.connect(SQLITE_DB_PATH)
+    conn = sqlite3.connect(SQLITE_DB_PATH, timeout=30)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -163,4 +166,5 @@ def execute_schema(cursor):
         for statement in _split_sql_script(_postgres_schema(schema)):
             cursor.execute(statement)
     else:
-        cursor.executescript(schema)
+        for statement in _split_sql_script(schema):
+            cursor.execute(statement)

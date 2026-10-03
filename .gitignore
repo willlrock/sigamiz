@@ -27,3 +27,10 @@ USER.md
 memory/
 openclaw-workspace-state.json
 skills/
+
+# Local audit dependencies, backups and browser fixtures
+audit/runtime/
+audit/2026-10-02/before/
+.draft-locks/
+*.db-shm
+*.db-wal
