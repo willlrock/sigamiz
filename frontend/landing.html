@@ -102,25 +102,28 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
  .nav-links,.desktop-add{display:none}.menu{display:grid}.hero{padding-top:112px}.hero-grid,.steps,.paths,.listing-grid{grid-template-columns:1fr}.hero-visual{height:420px}h1{font-size:40px}.uni-row{gap:26px;font-size:22px}.stats{flex-wrap:wrap}.divider{display:none}
 }
 </style>
+<link rel="stylesheet" href="/static/shared.css">
+<script src="/static/shared.js"></script>
+<script src="/static/auth.js"></script>
 </head>
 <body>
 <nav class="topbar">
  <div class="nav-inner">
   <a class="brand" href="/">Sigamiz</a>
   <div class="nav-links">
-   <a href="/xarita">Map</a>
-   <a href="/about">About</a>
-   <a href="#how-it-works">How it works</a>
+   <a href="/xarita">Xarita</a>
+   <a href="/about">Loyiha haqida</a>
+   <a href="#how-it-works">Qanday ishlaydi?</a>
   </div>
-  <a class="add-btn desktop-add" href="/publish">Add Listing</a>
+  <a class="add-btn desktop-add" href="/publish">E‘lon joylash</a>
   <button class="menu" id="menuBtn" type="button" aria-label="Menyu"><span class="material-symbols-outlined">menu</span></button>
  </div>
 </nav>
 <div class="mobile-nav" id="mobileNav">
- <a href="/xarita">Map</a>
- <a href="/about">About</a>
- <a href="#how-it-works">How it works</a>
- <a href="/publish">Add Listing</a>
+ <a href="/xarita">Xarita</a>
+ <a href="/about">Loyiha haqida</a>
+ <a href="#how-it-works">Qanday ishlaydi?</a>
+ <a href="/publish">E‘lon joylash</a>
 </div>
 
 <main>
@@ -129,7 +132,7 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
    <div>
     <div class="eyebrow"><span class="material-symbols-outlined" style="font-size:16px">bolt</span> Yangi platforma</div>
     <h1>Ijara qimmat. Sherik top, <span class="gradient">birga arzon.</span></h1>
-    <p class="lede">Toshkentda talabalar uchun eng tez va qulay uy hamda xonadosh topish platformasi. Saytda e'lon qilingan kvartiralarni ko'ring, shaxsiy qidiruv va xonadosh topish esa Telegram botda qoladi.</p>
+    <p class="lede">Toshkentda talabalar uchun uy va xonadosh qidirish platformasi. Saytda e'lon qilingan kvartiralarni ko'ring, shaxsiy qidiruv va xonadosh topish esa Telegram botda qoladi.</p>
     <div class="cta-row">
      <a class="primary-btn" href="/xarita"><span class="material-symbols-outlined">map</span>Xaritani ochish</a>
      <a class="ghost-btn" href="#how-it-works">Qanday ishlaydi?</a>
@@ -137,17 +140,17 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
     <div class="stats">
      <div class="stat"><b id="statListings">...</b><span>faol e'lonlar</span></div>
      <div class="divider"></div>
-     <div class="stat"><b>1 baza</b><span>sayt va Telegram bot</span></div>
+     <div class="stat"><b>1 akkaunt</b><span>bitta faol e’lon</span></div>
      <div class="divider"></div>
      <div class="stat"><b>100%</b><span>bepul xizmat</span></div>
     </div>
    </div>
    <a class="hero-visual" href="/xarita">
-    <img alt="Sigamiz xarita" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaRC2UlmACfCBSEJn7XLFtE440LLkmQQf0ukLbOw-5pblroBBLIRAiWfCOkTo3iI9CoHp3qP_9ZJwAUvx-31aKFJTA7ItZFZCTSH4x2qpFq3Gqc-bXgnwYAL-a7g3_ar0iabrbDuF7gPTk-boIP1HzCWFVFQDrNbGr_s68ko-gIotV5Bv-oaAXtpTmJlJ7Y7_3ceXq7Qpp8N2C51I7Q1f6zyKsLO8crfyDzJU8hem7iLSnZ4XEZCsgDMi20dpuPbwYmqVw5COhOy0">
+    <img alt="Xarita tasviri" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaRC2UlmACfCBSEJn7XLFtE440LLkmQQf0ukLbOw-5pblroBBLIRAiWfCOkTo3iI9CoHp3qP_9ZJwAUvx-31aKFJTA7ItZFZCTSH4x2qpFq3Gqc-bXgnwYAL-a7g3_ar0iabrbDuF7gPTk-boIP1HzCWFVFQDrNbGr_s68ko-gIotV5Bv-oaAXtpTmJlJ7Y7_3ceXq7Qpp8N2C51I7Q1f6zyKsLO8crfyDzJU8hem7iLSnZ4XEZCsgDMi20dpuPbwYmqVw5COhOy0">
     <div class="float-pill"><span class="pulse"></span>Toshkent</div>
     <div class="float-card">
      <div class="float-icon"><span class="material-symbols-outlined">person_add</span></div>
-     <div><strong>Yangi sherik topildi</strong><br><span style="color:var(--muted);font-size:13px">Yunusobod tumani</span></div>
+     <div><strong>Xonadosh qidiring</strong><br><span style="color:var(--muted);font-size:13px">Toshkentdagi e‘lonlar</span></div>
     </div>
    </a>
   </div>
@@ -155,7 +158,7 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
 
  <section class="uni">
   <div class="wrap">
-   <p>Shu universitetlar talabalari ishonchi</p>
+   <p>Universitet bo‘yicha qidiring</p>
    <div class="uni-row"><span>TATU</span><span>WIUT</span><span>INHA</span><span>TMI</span><span>O'zMU</span></div>
   </div>
  </section>
@@ -175,7 +178,7 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
     <article class="path-card">
      <div class="path-icon"><span class="material-symbols-outlined">search</span></div>
      <h3>Telegram profil</h3>
-     <p>Budjet, tuman, universitet va xona sozlamalari botda ham, saytda ham bitta profilingizda saqlanadi.</p>
+     <p>Budjet, tuman, xonadosh va qulayliklar bo‘yicha qidiring. Yangi mos e’lon haqida bot xabar beradi.</p>
     </article>
     <article class="path-card">
      <div class="path-icon"><span class="material-symbols-outlined">verified_user</span></div>
@@ -190,7 +193,7 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
   <div class="wrap">
    <div class="head">
     <h2>So'nggi e'lonlar</h2>
-    <p>API orqali kelayotgan real e'lonlar. Faqat faol va tekshirilgan ma'lumotlar ko'rsatiladi.</p>
+    <p>Faol e’lonlar. Tafsilotlarni ko‘ring va uy egasi bilan sharoitlarni aniqlashtiring.</p>
    </div>
    <div class="filters">
     <button class="chip active" data-type="offer" type="button">Uy bor</button>
@@ -219,31 +222,22 @@ footer{background:var(--surface-low);border-top:1px solid var(--outline);padding
 
 <footer>
  <div class="footer-inner">
-  <div><div class="footer-brand">Sigamiz</div><div style="color:var(--muted);font-size:13px">2026 Sigamiz. Built by students for students.</div></div>
-  <div class="footer-links"><a href="/about">About</a><a href="/xarita">Map</a><a data-bot-start="add" href="https://t.me/klapa_net_bot?start=add" target="_blank">Telegram Bot</a><a href="/about#safety">Safety Tips</a></div>
+  <div><div class="footer-brand">Sigamiz</div><div style="color:var(--muted);font-size:13px">2026 Sigamiz. Talabalar uchun.</div></div>
+  <div class="footer-links"><a href="/about">Loyiha haqida</a><a href="/xarita">Xarita</a><a data-bot-start="add" href="https://t.me/klapa_net_bot?start=add" target="_blank">Telegram bot</a><a href="/about#safety">Xavfsizlik</a></div>
  </div>
 </footer>
 
 <script>
-async function updateBotLinks(){
- const config = await fetch("/api/config").then(res => res.json()).catch(() => ({}));
- if(!config.bot_username) return;
- document.querySelectorAll("[data-bot-start]").forEach(link => {
-  const start = link.dataset.botStart || "start";
-  link.href = `https://t.me/${encodeURIComponent(config.bot_username)}?start=${encodeURIComponent(start)}`;
- });
-}
+const {escapeHtml,formatPrice,titleFor}=SigamizUI;
+function updateBotLinks(){return SigamizUI.updateBotLinks();}
 updateBotLinks();
-const DEMO_LISTINGS = [
- {id:1, listing_type:"offer", university:"TATU", district:"Yunusobod", housing_type:"Kvartira", room_count:3, description:"3 xonali kvartira, 2 ta bola kerak. TATU ga yaqin.", price:700000, people_needed:2, has_wifi:1, has_ac:0, has_washing_machine:1, near_metro:1, telegram_username:"aziz_tatu", photos:["https://lh3.googleusercontent.com/aida-public/AB6AXuA-1dOpV1KSbu1vAHSzusu2RnGHUkL2tTLWzkhb2gcBqWHoFRmHxJhGsFhi0pK0z77TPd9S6JZuDyOcWyGB7QAUQSClwiLdoU1uRPrrVafwWaqAARlpPUof59TgHigEXDdEsgfEVV6QwaEhrd98WJitPRRaaosIKP_MzoAEf4p-ORxg352gWCEjF1QH4yV1hB8wPB4e-jipp9QF8jQhbvT3MPfkwJDEU5Puf2X70pzLmcGoP13bIz0fOMl0HP_a9Wz9-8A4lAbB7os"]},
- {id:3, listing_type:"offer", university:"INHA", district:"Mirzo-Ulug'bek", housing_type:"Xonadonli uy", room_count:2, description:"Sokin joy, internet bor, hovlida xojayin turmaydi.", price:850000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:1, telegram_username:"nigina_inha", photos:[]}
-];
+
 let allListings = [], activeType = "offer";
 const filters = new Set();
-function escapeHtml(value){ return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char])); }
-function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " so'm"; }
+
+
 function typeInfo(item){ return {key:"offer", label:"Uy bor"}; }
-function titleFor(item){ return [item.district,item.university].filter(Boolean).join(", ") || "Toshkent"; }
+
 function matches(item){ if(item.listing_type !== "offer") return false; for(const filter of filters){ if(!item[filter]) return false; } return true; }
 function buildListingsUrl(){
  const params = new URLSearchParams();
@@ -257,18 +251,34 @@ function renderListings(){
  document.getElementById("emptyState").style.display = items.length ? "none" : "block";
  document.getElementById("listingGrid").innerHTML = items.map(item => {
   const type = typeInfo(item), photo = item.photos && item.photos[0];
-  const tags = [item.housing_type, item.room_count ? `${item.room_count} xona` : null, item.near_metro ? "Metro" : null, item.has_wifi ? "Wi-Fi" : null].filter(Boolean).slice(0,3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
-  return `<article class="listing-card" onclick="location.href='/xarita'">
-   <div class="card-media">${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}<div class="price">${formatPrice(item.price)}</div></div>
+  const tags = [item.housing_type, item.room_count ? `${item.room_count} xona` : null].filter(Boolean).slice(0,3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")+SigamizUI.tagsFor(item,2);
+  return `<article class="listing-card" data-id="${item.id}" onclick="location.href='/xarita?listing=${item.id}'">
+   <div class="card-media">${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}<div class="price">${formatPrice(item.price)} / kishi / oy</div></div>
    <div class="card-body"><div class="card-top"><h3>${escapeHtml(titleFor(item))}</h3><span class="badge ${type.key}">${escapeHtml(type.label)}</span></div><p>${escapeHtml(item.description || "")}</p><div class="tags">${tags}</div></div>
   </article>`;
  }).join("");
 }
 async function loadListings(){
- try{ const res = await fetch(buildListingsUrl()); if(!res.ok) throw new Error("bad"); allListings = await res.json(); if(!Array.isArray(allListings)) throw new Error("invalid"); }
- catch(e){ console.error("Failed to load listings", e); allListings = DEMO_LISTINGS; }
- document.getElementById("statListings").textContent = `${allListings.length}+`;
- renderListings();
+ const sequence=loadListings.sequence=(loadListings.sequence||0)+1;
+ SigamizUI.state("listingGrid","loading");
+ document.getElementById("emptyState").style.display="none";
+ try{
+  await SigamizUI.config();
+  const res=await fetch(buildListingsUrl());
+  if(!res.ok)throw new Error("load");
+  const items=await res.json();
+  if(!Array.isArray(items))throw new Error("shape");
+  if(sequence!==loadListings.sequence)return;
+  allListings=items.filter(item=>item.listing_type==="offer");
+  SigamizUI.state("listingGrid","ready");
+  renderListings();
+   fetch('/api/stats').then(r=>r.json()).then(s=>document.getElementById('statListings').textContent=String(s.active_listings ?? '—')).catch(()=>document.getElementById('statListings').textContent='—');
+ }catch(error){
+  if(sequence!==loadListings.sequence)return;
+  allListings=[];renderListings();
+  document.getElementById("emptyState").style.display="none";
+  SigamizUI.state("listingGrid","error",loadListings);
+ }
 }
 document.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => { activeType = button.dataset.type; document.querySelectorAll("[data-type]").forEach(item => item.classList.toggle("active", item === button)); loadListings(); }));
 document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => { const key = button.dataset.filter; filters.has(key) ? filters.delete(key) : filters.add(key); button.classList.toggle("active"); loadListings(); }));

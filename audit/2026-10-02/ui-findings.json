@@ -1,0 +1,349 @@
+{
+  "audit": {
+    "ranAt": "2026-10-02",
+    "skill": "ui-design",
+    "mode": "audit",
+    "scope": {
+      "mode": "named",
+      "files": [
+        "frontend/landing.html",
+        "frontend/map.html",
+        "frontend/publish.html",
+        "frontend/favorites.html",
+        "frontend/about.html"
+      ],
+      "filesAudited": 5
+    },
+    "featuresDetected": [
+      "search",
+      "list",
+      "form",
+      "modal",
+      "empty state"
+    ],
+    "rulesPlanned": 6,
+    "rulesRun": 6,
+    "selfCheck": {
+      "passed": true,
+      "failures": []
+    }
+  },
+  "session": {
+    "baseUrl": "http://127.0.0.1:8017",
+    "database": "Temporary SQLite copy",
+    "telegramDelivery": "Disabled",
+    "auth": "Synthetic local fixture",
+    "viewports": [
+      [
+        1280,
+        800
+      ],
+      [
+        360,
+        800
+      ]
+    ],
+    "mapProvider": "Leaflet",
+    "coverage": "Targeted probes for findings; not a complete accessibility certification."
+  },
+  "verdict": "NOT_READY",
+  "summary": {
+    "found": {
+      "releaseBlockers": 5,
+      "fixThisSprint": 3,
+      "backlog": 0,
+      "total": 8
+    },
+    "applied": {
+      "releaseBlockers": 0,
+      "fixThisSprint": 0,
+      "backlog": 0,
+      "total": 0
+    },
+    "remaining": {
+      "releaseBlockers": 5,
+      "fixThisSprint": 3,
+      "backlog": 0,
+      "total": 8
+    },
+    "outOfScope": 0,
+    "unknown": 0,
+    "suppressed": 0
+  },
+  "consideredAndRejected": [
+    {
+      "candidate": "Account target size",
+      "rule": "interaction-target-size",
+      "guard": "Measured 44x44px at 360px viewport."
+    },
+    {
+      "candidate": "Mobile document horizontal overflow",
+      "rule": "layout-long-content-safety",
+      "guard": "Document width 345px at viewport 360px; detail modal overflow is a separate confirmed finding."
+    }
+  ],
+  "deferredTo": [
+    {
+      "concern": "Full accessibility and contrast",
+      "tool": "axe-core and NVDA",
+      "reason": "Not run in this targeted audit."
+    },
+    {
+      "concern": "Performance",
+      "tool": "Lighthouse",
+      "reason": "Production lab measurements not run."
+    }
+  ],
+  "findings": [
+    {
+      "rule": "layout-long-content-safety",
+      "category": "layout",
+      "detect": "rendered",
+      "feature": "list",
+      "surface": "MapCards",
+      "file": "frontend/map.html",
+      "line": 102,
+      "defaultTier": "fix-this-sprint",
+      "assignedTier": "release-blocker",
+      "tierReason": "Основной список жилья обрезан до нечитаемых полос.",
+      "severity": "HIGH",
+      "observed": {
+        "viewport": [
+          1280,
+          800
+        ],
+        "cardHeightPx": 35.703125,
+        "mediaHeightPx": 0,
+        "bodyHeightPx": 219.4453125
+      },
+      "fix": "Убрать flex shrink у карточек и медиа, обеспечить прокрутку списка.",
+      "artifact": "02-map-desktop.jpg",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/map.html:102: {\"viewport\":[1280,800],\"cardHeightPx\":35.703125,\"mediaHeightPx\":0,\"bodyHeightPx\":219.4453125}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": "02-map-desktop.jpg"
+      }
+    },
+    {
+      "rule": "runtime:telephone-empty",
+      "category": "interaction",
+      "detect": "rendered",
+      "feature": "list",
+      "surface": "ListingDetail",
+      "file": "frontend/map.html",
+      "line": 725,
+      "defaultTier": "release-blocker",
+      "assignedTier": "release-blocker",
+      "severity": "HIGH",
+      "observed": {
+        "href": "tel:+"
+      },
+      "fix": "Исправить regex нормализации номера и проверить итоговую ссылку.",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/map.html:725: {\"href\":\"tel:+\"}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": null
+      }
+    },
+    {
+      "rule": "runtime:hidden-required-coordinate",
+      "category": "forms",
+      "detect": "rendered",
+      "feature": "form",
+      "surface": "PublishForm",
+      "file": "frontend/publish.html",
+      "line": 45,
+      "defaultTier": "release-blocker",
+      "assignedTier": "release-blocker",
+      "severity": "HIGH",
+      "observed": {
+        "invalidFields": [
+          "lat",
+          "lng"
+        ],
+        "fieldsVisible": false,
+        "notice": ""
+      },
+      "fix": "Проверять координаты через видимый шаг выбора места; убрать недоступную нативную валидацию скрытых полей.",
+      "artifact": "05-publish-mobile.jpg",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/publish.html:45: {\"invalidFields\":[\"lat\",\"lng\"],\"fieldsVisible\":false,\"notice\":\"\"}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": "05-publish-mobile.jpg"
+      }
+    },
+    {
+      "rule": "focus-broken-focus-trap",
+      "category": "focus",
+      "detect": "static",
+      "feature": "modal",
+      "surface": "ListingDetail",
+      "file": "frontend/map.html",
+      "line": 700,
+      "defaultTier": "release-blocker",
+      "assignedTier": "release-blocker",
+      "severity": "HIGH",
+      "observed": {
+        "focusAfterOpen": "BODY",
+        "focusInDrawerAfterTab": false,
+        "escapeCloses": false,
+        "dialogRole": null
+      },
+      "fix": "Добавить dialog, управление и восстановление фокуса, закрытие Escape.",
+      "artifact": "04-detail-mobile.jpg",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/map.html:700: {\"focusAfterOpen\":\"BODY\",\"focusInDrawerAfterTab\":false,\"escapeCloses\":false,\"dialogRole\":null}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": "04-detail-mobile.jpg"
+      }
+    },
+    {
+      "rule": "layout-long-content-safety",
+      "category": "layout",
+      "detect": "rendered",
+      "feature": "modal",
+      "surface": "ListingDetail",
+      "file": "frontend/map.html",
+      "line": 125,
+      "defaultTier": "fix-this-sprint",
+      "assignedTier": "fix-this-sprint",
+      "severity": "MEDIUM",
+      "observed": {
+        "viewport": [
+          360,
+          800
+        ],
+        "clientWidthPx": 309,
+        "scrollWidthPx": 394
+      },
+      "fix": "Добавить min-width:0 на flex-потомке автора, переносить или усекать строки.",
+      "artifact": "04-detail-mobile.jpg",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/map.html:125: {\"viewport\":[360,800],\"clientWidthPx\":309,\"scrollWidthPx\":394}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": "04-detail-mobile.jpg"
+      }
+    },
+    {
+      "rule": "layout-long-content-safety",
+      "category": "layout",
+      "detect": "rendered",
+      "feature": "list",
+      "surface": "LeafletPriceMarker",
+      "file": "frontend/map.html",
+      "line": 652,
+      "defaultTier": "fix-this-sprint",
+      "assignedTier": "fix-this-sprint",
+      "severity": "MEDIUM",
+      "observed": {
+        "markerWidthPx": 12,
+        "pinWidthPx": 28,
+        "pinScrollWidthPx": 47
+      },
+      "fix": "Задать размер и якорь divIcon, обеспечить intrinsic width ценника.",
+      "artifact": "02-map-desktop.jpg",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/map.html:652: {\"markerWidthPx\":12,\"pinWidthPx\":28,\"pinScrollWidthPx\":47}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": "02-map-desktop.jpg"
+      }
+    },
+    {
+      "rule": "states-no-error-state",
+      "category": "states",
+      "detect": "static",
+      "feature": "search",
+      "surface": "MapListings",
+      "file": "frontend/map.html",
+      "line": 512,
+      "defaultTier": "release-blocker",
+      "assignedTier": "release-blocker",
+      "severity": "HIGH",
+      "observed": {
+        "injectedHttpStatus": 500,
+        "renderedDemoListings": 2,
+        "visibleError": false
+      },
+      "fix": "Убрать подмену на демоданные, показывать ошибку и кнопку повторной загрузки.",
+      "artifact": "07-api-failure-demo.jpg",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/map.html:512: {\"injectedHttpStatus\":500,\"renderedDemoListings\":2,\"visibleError\":false}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": "07-api-failure-demo.jpg"
+      }
+    },
+    {
+      "rule": "states-no-empty-state",
+      "category": "states",
+      "detect": "static",
+      "feature": "empty state",
+      "surface": "Favorites",
+      "file": "frontend/favorites.html",
+      "line": 183,
+      "defaultTier": "fix-this-sprint",
+      "assignedTier": "fix-this-sprint",
+      "severity": "MEDIUM",
+      "observed": {
+        "authenticated": true,
+        "favorites": [],
+        "emptyMessage": false,
+        "mapAction": false
+      },
+      "fix": "Показать объяснение пустого избранного и переход на карту; скрыть вход после авторизации.",
+      "artifact": "06-favorites-empty.jpg",
+      "result": "fail",
+      "applied": false,
+      "suppressed": false,
+      "evidence": [
+        "frontend/favorites.html:183: {\"authenticated\":true,\"favorites\":[],\"emptyMessage\":false,\"mapAction\":false}"
+      ],
+      "verification": {
+        "status": "reproduced",
+        "driver": "cua_repl Chrome",
+        "artifact": "06-favorites-empty.jpg"
+      }
+    }
+  ]
+}

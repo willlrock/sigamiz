@@ -14,7 +14,14 @@ jobs:
           git pull
           /home/admn/sigamiz/venv/bin/pip install -r requirements.txt
 
-          for service in klapa-bot klapa-backend; do
+          # Fail before restarting services if a shared rule regresses.
+          /home/admn/sigamiz/venv/bin/pip install -r requirements-dev.txt
+          BOT_TOKEN='' DISABLE_BACKGROUND_WORKER=true /home/admn/sigamiz/venv/bin/python -m unittest discover -s tests -v
+          node scripts/check_frontend.js
+          /home/admn/sigamiz/venv/bin/python scripts/check_bot_contract.py
+          /home/admn/sigamiz/venv/bin/python -m backend.init_db
+
+          for service in klapa-backend klapa-bot; do
             echo "Restarting $service..."
             sudo systemctl restart "$service"
             sleep 5
@@ -26,3 +33,4 @@ jobs:
               exit 1
             fi
           done
+          curl --fail --silent --show-error http://127.0.0.1:8000/api/config > /dev/null

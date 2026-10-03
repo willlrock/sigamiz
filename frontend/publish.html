@@ -18,34 +18,37 @@
 .side{padding:18px}.profile{display:grid;gap:8px}.status{display:inline-flex;width:max-content;border-radius:var(--pill);background:var(--primary-soft);color:var(--primary);padding:6px 10px;font-size:12px;font-weight:900}.my-list{display:grid;gap:10px;margin-top:16px}.mini{border:1px solid var(--outline);border-radius:8px;padding:12px}.mini b{display:block;margin-bottom:4px}.mini span{font-size:12px;color:var(--muted)}.badge{display:inline-flex;border-radius:var(--pill);padding:4px 8px;font-size:11px;font-weight:900;background:var(--container);color:var(--muted);margin-top:8px}.badge.hidden_pending_review{background:#FFF1C2;color:#735500}.badge.active{background:var(--primary-soft);color:var(--primary)}.photo-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}.thumb{height:72px;border-radius:8px;background:var(--container);overflow:hidden;display:grid;place-items:center;color:var(--muted);font-size:12px}.thumb img{width:100%;height:100%;object-fit:cover}
 @media(max-width:860px){.nav{display:none}.layout{grid-template-columns:1fr}.grid,.checks{grid-template-columns:1fr}.head{display:block}.head h1{font-size:32px}}
 </style>
+<link rel="stylesheet" href="/static/shared.css">
+<script src="/static/shared.js"></script>
+<script src="/static/auth.js"></script>
 </head>
 <body>
-<nav class="topbar"><div class="nav-inner"><a class="brand" href="/">Sigamiz</a><div class="nav"><a href="/xarita">Map</a><a href="/favorites">Izbrannoe</a><a class="active" href="/publish">Add Listing</a></div><button class="login" id="loginBtn" type="button">Telegram orqali kirish</button></div></nav>
+<nav class="topbar"><div class="nav-inner"><a class="brand" href="/">Sigamiz</a><div class="nav"><a href="/xarita">Xarita</a><a href="/favorites">Saqlanganlar</a><a class="active" href="/publish">E‘lon joylash</a></div><button class="login" id="loginBtn" type="button">Telegram orqali kirish</button></div></nav>
 <main class="wrap">
  <section class="head"><div><h1>E'lon joylash</h1><p>Avval Telegram orqali kiring. Shunda bitta akkaunt bitta faol kvartira joylaydi va maklerlarni kamaytiramiz.</p></div><a class="ghost" id="botLink" href="https://t.me/klapa_net_bot?start=start" target="_blank">Botni ochish</a></section>
- <div class="notice" id="notice"></div>
+ <div class="notice" id="notice" role="status" tabindex="-1"></div>
  <section class="auth-panel" id="authPanel">
   <h2>Telegram orqali tasdiqlang</h2>
   <p>Bu qadam har bir kvartira ortida haqiqiy Telegram akkaunt borligini tekshiradi. Maqsad: bir akkaunt bitta kvartira joylaydi, dublikat va makler e'lonlari kamayadi.</p>
   <div class="auth-actions"><div id="telegramLogin"></div></div>
  </section>
  <section class="layout">
-  <form class="panel form locked" id="listingForm">
+  <form class="panel form locked" id="listingForm" inert>
    <h2>Kvartira ma'lumotlari</h2>
    <div class="grid">
-    <div class="field"><label for="district">Tuman</label><select id="district" required><option value="">Tanlang</option><option>Mirzo-Ulug'bek</option><option>Yunusobod</option><option>Mirobod</option><option>Chilonzor</option><option>Yakkasaroy</option><option>Shayxontohur</option><option>Uchtepa</option><option>Sergeli</option><option>Yashnobod</option><option>Bektemir</option><option>Olmazor</option></select></div>
-    <div class="field"><label for="university">Universitet</label><select id="university" required><option value="">Tanlang</option><option>TATU</option><option>WIUT</option><option>INHA</option><option>O'zMU</option><option>TMI</option><option>TDIU</option><option>TSUULL</option><option>TTA</option><option>Other</option></select></div>
-    <div class="field"><label for="housing_type">Uy turi</label><select id="housing_type" required><option>Kvartira</option><option>Xonadonli uy</option><option>Yotoqxona</option><option>Boshqa</option></select></div>
+    <div class="field"><label for="district">Tuman</label><select id="district" required><option value="">Tanlang</option></select></div>
+    <div class="field"><label for="university">Universitet</label><select id="university" required><option value="">Tanlang</option></select></div>
+    <div class="field"><label for="housing_type">Uy turi</label><select id="housing_type" required><option value="">Tanlang</option></select></div>
     <div class="field"><label for="room_count">Xonalar</label><input id="room_count" type="number" min="1" max="20" value="2" required></div>
-    <div class="field"><label for="price">Narx / kishi</label><input id="price" type="text" inputmode="numeric" placeholder="900000" required></div>
+    <div class="field"><label for="price">Narx / kishi / oy (so’m)</label><input id="price" type="text" pattern="[0-9 ]+" inputmode="numeric" placeholder="900000" required></div>
     <div class="field"><label for="people_needed">Kerak odam</label><input id="people_needed" type="number" min="1" max="10" value="1" required></div>
     <div class="field"><label for="author_gender">Siz</label><select id="author_gender" required><option value="male">Erkak</option><option value="female">Ayol</option></select></div>
     <div class="field"><label for="preferred_gender">Xonadosh</label><select id="preferred_gender" required><option value="any">Farqi yo'q</option><option value="male">Erkak</option><option value="female">Ayol</option></select></div>
-    <div class="field full"><label for="address">Manzil</label><input id="address" type="text" placeholder="Masalan: TATU yonida, Yunusobod"><div class="location-actions"><button type="button" id="detectLocation">Joylashuvni aniqlash</button><button type="button" id="findAddress">Manzilni topish</button></div><div class="location-status" id="locationStatus">Manzil yozing yoki lokatsiyani avtomatik aniqlang.</div></div>
-    <div class="field hidden-field"><label for="lat">Lat</label><input id="lat" type="number" step="0.000001" value="" required></div>
-    <div class="field hidden-field"><label for="lng">Lng</label><input id="lng" type="number" step="0.000001" value="" required></div>
+    <div class="field full"><label for="address">Manzil</label><input id="address" type="text" placeholder="Masalan: TATU yonida, Yunusobod"><div class="location-actions"><button type="button" id="detectLocation">Joylashuvni aniqlash</button><button type="button" id="findAddress">Manzilni topish</button></div><div class="location-status" id="locationStatus" role="status" tabindex="-1">Manzil yozing yoki lokatsiyani avtomatik aniqlang.</div></div>
+    <div class="field hidden-field"><label for="lat">Lat</label><input id="lat" type="hidden" step="0.000001" value=""></div>
+    <div class="field hidden-field"><label for="lng">Lng</label><input id="lng" type="hidden" step="0.000001" value=""></div>
     <div class="field full"><label for="phone_number">Telefon</label><input id="phone_number" type="tel" placeholder="+998901234567"></div>
-    <div class="field full"><label>Qulayliklar</label><div class="checks"><label class="check"><input type="checkbox" id="has_wifi">Wi-Fi</label><label class="check"><input type="checkbox" id="has_ac">Konditsioner</label><label class="check"><input type="checkbox" id="has_washing_machine">Kir yuvish</label><label class="check"><input type="checkbox" id="no_landlord_in_yard">Xo'jayinsiz</label><label class="check"><input type="checkbox" id="near_metro">Metro yaqin</label></div></div>
+    <div class="field full"><label>Qulayliklar</label><div class="checks" id="amenityChecks"></div></div>
     <div class="field full"><label for="description">Tavsif</label><textarea id="description" maxlength="1000"></textarea></div>
     <div class="field full"><label for="photos">Rasmlar</label><input id="photos" type="file" accept="image/*" multiple><div class="hint">5 tagacha rasm yuklang.</div><div class="photo-row" id="preview"></div></div>
    </div>
@@ -59,95 +62,43 @@
   </aside>
  </section>
 </main>
+<script src="/static/draft.js"></script>
 <script>
+const {formatPrice}=SigamizUI;
 let currentUser = null;
+let submitting = false;
+let photoError = null;
 let selectedPhotos = [];
+let amenityColumns = [];
 let selectedPhotoLoad = Promise.resolve();
-let botLoginPollTimer = null;
-function showNotice(text,type=""){const el=document.getElementById("notice");el.className=`notice ${type}`;el.style.display="block";el.textContent=text;}
+function showNotice(text,type=""){const el=document.getElementById("notice");el.className=`notice ${type}`;el.style.display="block";el.textContent=text;el.setAttribute("role",type==="error"?"alert":"status");if(type==="error")el.focus();}
 function hideNotice(){document.getElementById("notice").style.display="none";}
-function formatPrice(value){return new Intl.NumberFormat("ru-RU").format(Number(value||0))+" so'm";}
-function normalizeMoney(value){return String(value||"").replace(/[^\d]/g,"");}
+
+
 function setPublishEnabled(){
  const ready = Boolean(currentUser && currentUser.bot_started_at);
  document.getElementById("listingForm").classList.toggle("locked", !ready);
- document.getElementById("submitBtn").disabled = !ready;
+ document.getElementById("listingForm").inert = !ready;
+ document.getElementById("submitBtn").disabled = !ready || submitting;
  document.getElementById("authPanel").classList.toggle("auth-ok", ready);
  document.getElementById("authPanel").querySelector("h2").textContent = ready ? "Telegram tasdiqlandi" : "Telegram orqali tasdiqlang";
 }
-async function telegramAuth(user){
- const res=await fetch("/api/auth/telegram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(user)});
- if(!res.ok) throw new Error("auth");
- await loadMe();
- await loadMyListings();
-}
-async function startBotLogin(){
- hideNotice();
- const popup=window.open("about:blank","_blank");
- try{
-  const session=await fetch("/api/auth/telegram/start",{method:"POST"}).then(res=>{
-   if(!res.ok) throw new Error("Telegram bot sozlanmagan.");
-   return res.json();
-  });
-  showNotice("Telegram ochildi. Botda Start bosing, keyin bu sahifa avtomatik kiradi.","warn");
-  if(popup){popup.opener=null;popup.location.href=session.bot_url;}
-  else window.location.href=session.bot_url;
-  clearInterval(botLoginPollTimer);
-  botLoginPollTimer=setInterval(async()=>{
-   try{
-    const res=await fetch("/api/auth/telegram/complete",{
-     method:"POST",
-     headers:{"Content-Type":"application/json"},
-     body:JSON.stringify({token:session.token})
-    });
-    if(res.status===404){clearInterval(botLoginPollTimer);showNotice("Kirish havolasi eskirdi. Telegram orqali kirishni qayta bosing.","error");return;}
-    const data=await res.json().catch(()=>({}));
-    if(data.ok){
-     clearInterval(botLoginPollTimer);
-     showNotice("Telegram orqali kirdingiz.","ok");
-     await loadMe();
-     await loadMyListings();
-    }
-   }catch(e){}
-  },1800);
-  setTimeout(()=>clearInterval(botLoginPollTimer),10*60*1000);
- }catch(e){
-  if(popup) popup.close();
-  showNotice(String(e.message||e),"error");
- }
-}
+
+async function startBotLogin(){ await SigamizAuth.start(); }
 async function mountTelegramLogin(){
- const config=await fetch("/api/config").then(res=>res.json()).catch(()=>({}));
- const botLink=document.getElementById("botLink");
- if(config.bot_username) botLink.href=`https://t.me/${config.bot_username}?start=start`;
- document.getElementById("loginBtn").onclick=()=>document.getElementById("telegramLogin").scrollIntoView({behavior:"smooth",block:"center"});
- const target=document.getElementById("telegramLogin");
- target.innerHTML="";
- if(config.telegram_client_id){
-  window.onTelegramAuth=telegramAuth;
-  const button=document.createElement("button");
-  button.className="tg-auth-button";
-  button.dataset.style="shine";
-  button.type="button";
-  button.textContent="Sign In with Telegram";
-  const script=document.createElement("script");
-  script.async=true;script.src="https://oauth.telegram.org/js/telegram-login.js?5";
-  script.dataset.clientId=config.telegram_client_id;
-  script.dataset.onauth="onTelegramAuth(data)";
-  script.dataset.requestAccess="write";
-  target.appendChild(button);
-  target.appendChild(script);
- }
- const fallback=document.createElement("button");
- fallback.className="ghost";
- fallback.type="button";
- fallback.textContent="Bot orqali kirish";
- fallback.onclick=startBotLogin;
- target.appendChild(fallback);
+ await SigamizAuth.mount(document.getElementById("telegramLogin"),async()=>{await loadMe();await loadMyListings();});
+ const login=document.getElementById("loginBtn");
+ if(login)login.onclick=startBotLogin;
+ const config=await SigamizUI.config().catch(()=>({}));if(config.bot_username)document.getElementById('botLink').href='https://t.me/'+config.bot_username+'?start=start';
 }
 async function loadMe(){
- const data=await fetch("/api/me").then(res=>res.json());
+ const data=await fetch("/api/me").then(res=>{if(!res.ok)throw Error("Profil yuklanmadi");return res.json();}).catch(()=>({user:null}));
  currentUser=data.user;
+ document.getElementById("phone_number").required=Boolean(currentUser&&!currentUser.telegram_username);
+ await SigamizDraft.bind(currentUser?.telegram_user_id, photos=>{
+  selectedPhotos=photos;
+  document.getElementById('preview').innerHTML=photos.map(src=>`<div class="thumb"><img src="${SigamizUI.escapeHtml(src)}" alt="Qoralamadagi rasm"></div>`).join('');
+ });
  const loginBtn=document.getElementById("loginBtn");
  const profile=document.getElementById("profile");
  if(!currentUser){
@@ -157,48 +108,58 @@ async function loadMe(){
   return null;
  }
  loginBtn.textContent=currentUser.telegram_username?`@${currentUser.telegram_username}`:"Telegram";
- profile.innerHTML=`<span class="status">${currentUser.bot_started_at?"Bot ulangan":"Bot kerak"}</span><b>${currentUser.first_name||"Telegram user"}</b><span>${currentUser.telegram_username?`@${currentUser.telegram_username}`:""}</span>`;
+ profile.innerHTML=`<span class="status">${currentUser.bot_started_at?"Bot ulangan":"Bot kerak"}</span><b>${SigamizUI.escapeHtml(currentUser.first_name||"Telegram foydalanuvchi")}</b><span>${currentUser.telegram_username?`@${SigamizUI.escapeHtml(currentUser.telegram_username)}`:""}</span>`;
  if(!currentUser.bot_started_at) showNotice("E'lon joylash uchun avval Telegram botni bir marta ishga tushiring.", "warn");
  else hideNotice();
  setPublishEnabled();
  return currentUser;
 }
 function readFiles(files){
- selectedPhotos=[];
- const preview=document.getElementById("preview");
- preview.innerHTML="";
- const readers=Array.from(files).slice(0,5).map(file=>new Promise((resolve,reject)=>{
-  const reader=new FileReader();
-  reader.onload=()=>resolve(reader.result);
-  reader.onerror=reject;
-  reader.readAsDataURL(file);
- }));
- selectedPhotoLoad=Promise.all(readers).then(results=>{
+ const sequence=readFiles.sequence=(readFiles.sequence||0)+1;
+ const list=Array.from(files),preview=document.getElementById('preview');
+ photoError=null;selectedPhotos=[];preview.replaceChildren();
+ if(list.length>5||list.some(file=>file.size>5*1024*1024)){
+  photoError='Ko’pi bilan 5 ta rasm; har biri 5 MB dan kichik bo’lsin.';
+  showNotice(photoError,'error');selectedPhotoLoad=Promise.resolve();return;
+ }
+ selectedPhotoLoad=Promise.all(list.map(file=>new Promise((resolve,reject)=>{
+  const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);
+ }))).then(results=>{
+  if(sequence!==readFiles.sequence)return;
   selectedPhotos=results;
-  preview.innerHTML=results.map(src=>`<div class="thumb"><img src="${src}" alt="Rasm"></div>`).join("");
- });
+  preview.innerHTML=results.map(src=>`<div class="thumb"><img src="${SigamizUI.escapeHtml(src)}" alt="Tanlangan rasm"></div>`).join('');
+  if(window.SigamizDraft)SigamizDraft.savePhotos(results);
+ }).catch(()=>{photoError='Rasmlarni o’qib bo’lmadi. Qayta tanlang.';showNotice(photoError,'error');});
 }
 async function loadMyListings(){
- const list=document.getElementById("myListings");
- if(!currentUser){list.innerHTML="";return;}
- const res=await fetch("/api/my-listings");
- if(!res.ok){list.innerHTML="<span>E'lonlar yuklanmadi.</span>";return;}
- const items=await res.json();
- list.innerHTML=items.length?items.map(item=>`<article class="mini"><b>${item.district||"-"}, ${item.university||"-"}</b><span>${formatPrice(item.price)} · ${item.room_count||"-"} xona</span><br><span class="badge ${item.status}">${item.status}</span></article>`).join(""):"<span>Hali e'lon yo'q.</span>";
+ const list=document.getElementById('myListings');
+ if(!currentUser){list.replaceChildren();return;}
+ try{
+  const response=await fetch('/api/my-listings');if(!response.ok)throw Error('load');
+  const items=await response.json(),statuses=(await SigamizUI.config()).catalogs.statuses;
+  list.innerHTML=items.length?items.map(item=>`<article class="mini"><b>${SigamizUI.escapeHtml(item.district||'-')}, ${SigamizUI.escapeHtml(item.university||'-')}</b><span>${formatPrice(item.price)} / kishi / oy · ${item.room_count||'-'} xona</span><br><span class="badge ${SigamizUI.escapeHtml(item.status)}">${statuses[item.status]||'Tekshiruvda'}</span><p>${SigamizUI.expiresLabel(item.expires_at)}</p><button type="button" class="ghost" onclick="manageMine(${item.id},'extend',this)">7 kunga uzaytirish</button> <button type="button" class="ghost" onclick="manageMine(${item.id},'remove',this)">O‘chirish</button></article>`).join(''):'Hali e‘lon yo‘q.';
+ }catch{list.innerHTML='<p>E‘lonlar yuklanmadi.</p><button type="button" class="ghost" onclick="loadMyListings()">Qayta urinish</button>';}
+}
+async function manageMine(id,action,button){
+ if(action==='remove'&&!confirm('E‘lonni o‘chirishni tasdiqlaysizmi?'))return;
+ button.disabled=true;
+ try{const response=await fetch(`/api/my-listings/${id}/${action}`,{method:'POST'});const data=await response.json();if(!response.ok)throw Error(data.detail||'Saqlab bo‘lmadi');await loadMyListings();showNotice(action==='remove'?'E‘lon o‘chirildi.':'E‘lon muddati uzaytirildi.','ok');}
+ catch(error){showNotice(error.message,'error');button.disabled=false;}
 }
 function payloadFromForm(){
  const ids=["district","university","housing_type","room_count","price","people_needed","author_gender","preferred_gender","lat","lng","phone_number","description"];
  const payload={photos:selectedPhotos};
  ids.forEach(id=>payload[id]=document.getElementById(id).value);
- payload.price=normalizeMoney(payload.price);
+ payload.price=String(payload.price).replace(/ /g,"");
  payload.address=document.getElementById("address").value;
- ["has_wifi","has_ac","has_washing_machine","no_landlord_in_yard","near_metro"].forEach(id=>payload[id]=document.getElementById(id).checked);
+ amenityColumns.forEach(id=>payload[id]=document.getElementById(id).checked);
  return payload;
 }
 function setLocation(lat,lng,label){
  document.getElementById("lat").value=Number(lat).toFixed(6);
  document.getElementById("lng").value=Number(lng).toFixed(6);
  document.getElementById("locationStatus").textContent=label||"Lokatsiya saqlandi.";
+ SigamizDraft.save();
 }
 document.getElementById("detectLocation").addEventListener("click",()=>{
  const status=document.getElementById("locationStatus");
@@ -227,26 +188,42 @@ document.getElementById("findAddress").addEventListener("click",async()=>{
 document.getElementById("photos").addEventListener("change",event=>readFiles(event.target.files));
 document.getElementById("listingForm").addEventListener("submit",async event=>{
  event.preventDefault();
+ if(submitting)return;
  hideNotice();
  if(!currentUser){showNotice("Avval Telegram orqali kiring. Bu makler va dublikatlarni kamaytirish uchun kerak.","error");document.getElementById("authPanel").scrollIntoView({behavior:"smooth",block:"center"});return;}
  if(!currentUser.bot_started_at){showNotice("Botni bir marta oching, keyin sahifani yangilang.","warn");return;}
- if(!document.getElementById("lat").value||!document.getElementById("lng").value){showNotice("Avval lokatsiyani avtomatik aniqlang yoki manzilni toping.","error");return;}
+ if(!document.getElementById("lat").value||!document.getElementById("lng").value){showNotice("Avval lokatsiyani avtomatik aniqlang yoki manzilni toping.","error");document.getElementById("locationStatus").textContent="Manzilni toping yoki joylashuvni aniqlang.";document.getElementById("address").focus();return;}
+ submitting=true;setPublishEnabled();document.getElementById("submitBtn").textContent="Saqlanmoqda…";
  try{
   await selectedPhotoLoad;
+  if(photoError)throw Error(photoError);
   const res=await fetch("/api/listings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payloadFromForm())});
   const data=await res.json().catch(()=>({}));
   if(res.status===401){showNotice("Avval Telegram orqali kiring.","error");return;}
-  if(res.status===403){showNotice("Avval Telegram botni bir marta ishga tushiring, keyin sahifani yangilang.","warn");return;}
+  if(res.status===403){showNotice(data.detail||"E‘lon joylashtirishga ruxsat yo‘q.","warn");return;}
   if(res.status===409){showNotice(data.detail||"Sizda allaqachon faol e'lon bor. Bitta akkaunt bitta kvartira joylay oladi.","warn");return;}
   if(!res.ok) throw new Error(data.detail||"publish");
   showNotice(data.status==="hidden_pending_review"?"E'lon saqlandi va foto o'xshashligi sabab admin tekshiruviga yuborildi.":"E'lon joylashtirildi.","ok");
+  if(window.SigamizDraft)await SigamizDraft.clear();
   event.target.reset();selectedPhotos=[];document.getElementById("preview").innerHTML="";
   document.getElementById("lat").value="";document.getElementById("lng").value="";document.getElementById("locationStatus").textContent="Manzil yozing yoki lokatsiyani avtomatik aniqlang.";
   await loadMyListings();
  }catch(e){showNotice(String(e.message||e),"error");}
+ finally{submitting=false;setPublishEnabled();document.getElementById("submitBtn").textContent="Joylashtirish";}
 });
-mountTelegramLogin();
-loadMe().then(loadMyListings);
+async function boot(){
+ try{
+  const config=await SigamizUI.config(),catalog=config.catalogs;
+  [['district','districts'],['university','universities'],['housing_type','housing_types']].forEach(([id,key])=>{
+   const select=document.getElementById(id);select.replaceChildren(new Option('Tanlang',''));
+   catalog[key].forEach(value=>select.add(new Option(value==='Other'?'Boshqa':value,value)));
+  });
+  amenityColumns=catalog.amenities.map(([, ,column])=>column);
+  document.getElementById('amenityChecks').innerHTML=catalog.amenities.map(([,label,column])=>`<label class="check"><input type="checkbox" id="${SigamizUI.escapeHtml(column)}">${SigamizUI.escapeHtml(label)}</label>`).join('');
+  await mountTelegramLogin();await loadMe();await loadMyListings();
+ }catch{showNotice('Sozlamalar yuklanmadi. Sahifani yangilang.','error');}
+}
+boot();
 </script>
 </body>
 </html>

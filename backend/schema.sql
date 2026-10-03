@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS listings (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
- telegram_user_id INTEGER NOT NULL,
+ telegram_user_id BIGINT NOT NULL,
  telegram_username TEXT NOT NULL,
  listing_type TEXT NOT NULL DEFAULT 'seek' CHECK(listing_type IN ('offer','seek')),
  university TEXT,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS listing_photos (
 CREATE TABLE IF NOT EXISTS reports (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
  listing_id INTEGER NOT NULL,
- reporter_telegram_id INTEGER,
+ reporter_telegram_id BIGINT,
  reporter_key TEXT,
  reason TEXT,
  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -45,13 +45,13 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 
 CREATE TABLE IF NOT EXISTS banned_users (
- telegram_user_id INTEGER PRIMARY KEY,
+ telegram_user_id BIGINT PRIMARY KEY,
  reason TEXT,
  banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS users (
- telegram_user_id INTEGER PRIMARY KEY,
+ telegram_user_id BIGINT PRIMARY KEY,
  telegram_username TEXT,
  first_name TEXT,
  last_name TEXT,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS favorites (
- telegram_user_id INTEGER NOT NULL,
+ telegram_user_id BIGINT NOT NULL,
  listing_id INTEGER NOT NULL,
  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
  PRIMARY KEY (telegram_user_id, listing_id),
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS favorites (
 );
 
 CREATE TABLE IF NOT EXISTS listing_views (
- telegram_user_id INTEGER NOT NULL,
+ telegram_user_id BIGINT NOT NULL,
  listing_id INTEGER NOT NULL,
  viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
  PRIMARY KEY (telegram_user_id, listing_id),
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS listing_views (
 );
 
 CREATE TABLE IF NOT EXISTS search_preferences (
- telegram_user_id INTEGER PRIMARY KEY,
+ telegram_user_id BIGINT PRIMARY KEY,
  price_min INTEGER,
  price_max INTEGER,
  districts TEXT,
@@ -102,3 +102,21 @@ CREATE TABLE IF NOT EXISTS listing_photo_hashes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_listing_photo_hashes_hash ON listing_photo_hashes (photo_hash);
+
+CREATE TABLE IF NOT EXISTS web_login_tokens (
+ token TEXT PRIMARY KEY, telegram_user_id BIGINT, browser_hash TEXT, code_hash TEXT, approved_at DATETIME,
+ attempts INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+ expires_at DATETIME NOT NULL, used_at DATETIME
+);
+CREATE TABLE IF NOT EXISTS web_sessions (
+ token_hash TEXT PRIMARY KEY, telegram_user_id BIGINT NOT NULL,
+ expires_at DATETIME NOT NULL, revoked_at DATETIME
+);
+CREATE TABLE IF NOT EXISTS notification_outbox (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, event_key TEXT NOT NULL UNIQUE,
+ chat_id TEXT NOT NULL, payload TEXT NOT NULL, attempts INTEGER DEFAULT 0,
+ next_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP, delivered_at DATETIME
+);
+CREATE TABLE IF NOT EXISTS bot_drafts (
+ draft_key TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

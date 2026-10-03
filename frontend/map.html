@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="uz">
 <head>
 <meta charset="utf-8">
@@ -176,6 +176,9 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
  .price-chip.active .price-fields,.price-chip:focus-within .price-fields{width:152px}
 }
 </style>
+<link rel="stylesheet" href="/static/shared.css">
+<script src="/static/shared.js"></script>
+<script src="/static/auth.js"></script>
 </head>
 <body>
 <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -204,18 +207,18 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
  <div class="topbar-inner">
   <a class="brand" href="/">Sigamiz</a>
   <nav class="nav">
-   <a class="active" href="/xarita">Map</a>
-   <a href="/about">About</a>
-   <a href="/#how-it-works">How it works</a>
+   <a class="active" href="/xarita">Xarita</a>
+   <a href="/about">Loyiha haqida</a>
+   <a href="/#how-it-works">Qanday ishlaydi?</a>
   </nav>
   <div class="actions">
-   <a class="add-btn" href="/publish"><span class="material-symbols-outlined" data-fallback="+">add</span>Add Listing</a>
+   <a class="add-btn" href="/publish"><span class="material-symbols-outlined" data-fallback="+">add</span>E‘lon joylash</a>
    <div class="account-wrap">
     <button class="icon-btn" id="accountBtn" type="button" aria-label="Akkaunt" aria-expanded="false"><span class="material-symbols-outlined" data-fallback="@">account_circle</span></button>
     <div class="account-menu" id="accountMenu">
-     <div class="account-user" id="accountUser"><b>Telegram orqali kiring</b><span>Izbrannoe va saqlash uchun kerak.</span></div>
+     <div class="account-user" id="accountUser"><b>Telegram orqali kiring</b><span>Saqlanganlar va saqlash uchun kerak.</span></div>
      <div class="telegram-login-slot" id="mapTelegramLogin"></div>
-     <a class="account-link" href="/favorites"><span class="material-symbols-outlined" data-fallback="@">favorite_border</span>Izbrannoe</a>
+     <a class="account-link" href="/favorites"><span class="material-symbols-outlined" data-fallback="@">favorite_border</span>Saqlanganlar</a>
      <a class="account-link" href="/publish"><span class="material-symbols-outlined" data-fallback="+">add</span>E'lon joylash</a>
     </div>
    </div>
@@ -257,7 +260,7 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
   </a>
  </section>
 
- <button class="sheet-toggle" type="button" aria-label="Toggle results panel" aria-expanded="true" onclick="toggleResultsSheet()">
+ <button class="sheet-toggle" type="button" aria-label="Natijalar panelini ochish yoki yopish" aria-expanded="true" onclick="toggleResultsSheet()">
   <span class="material-symbols-outlined" data-fallback=">">chevron_right</span>
  </button>
 
@@ -274,7 +277,7 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
 <div class="drawer" id="detailDrawer">
  <article class="detail">
   <div class="detail-media" id="detailMedia">
-   <button class="close" type="button" onclick="closeDetail()"><span class="material-symbols-outlined" data-fallback="x">close</span></button>
+   <button class="close" type="button" aria-label="Yopish" onclick="closeDetail()"><span class="material-symbols-outlined" data-fallback="x">close</span></button>
   </div>
   <div class="detail-body" id="detailBody"></div>
  </article>
@@ -283,26 +286,16 @@ body.serp-mode .card:nth-child(n+5){animation-delay:.16s}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const DEMO_LISTINGS = [
- {id:1, listing_type:"offer", university:"TATU", district:"Yunusobod", housing_type:"Kvartira", room_count:3, description:"3 xonali kvartira, 2 ta bola kerak. TATU ga yaqin.", phone_number:"+998901234567", lat:41.3111, lng:69.2797, price:700000, people_needed:2, has_wifi:1, has_ac:0, has_washing_machine:1, no_landlord_in_yard:1, near_metro:1, telegram_username:"aziz_tatu", photos:["https://lh3.googleusercontent.com/aida-public/AB6AXuA-1dOpV1KSbu1vAHSzusu2RnGHUkL2tTLWzkhb2gcBqWHoFRmHxJhGsFhi0pK0z77TPd9S6JZuDyOcWyGB7QAUQSClwiLdoU1uRPrrVafwWaqAARlpPUof59TgHigEXDdEsgfEVV6QwaEhrd98WJitPRRaaosIKP_MzoAEf4p-ORxg352gWCEjF1QH4yV1hB8wPB4e-jipp9QF8jQhbvT3MPfkwJDEU5Puf2X70pzLmcGoP13bIz0fOMl0HP_a9Wz9-8A4lAbB7os"]},
- {id:2, listing_type:"seek", university:"WIUT", district:"Chilonzor", housing_type:null, room_count:null, description:"Faqat talaba qizlar uchun sheriklikka. Metrogacha 5 daqiqa.", phone_number:null, lat:41.2856, lng:69.2034, price:450000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:0, no_landlord_in_yard:0, near_metro:1, telegram_username:"madina_wiut", photos:["https://lh3.googleusercontent.com/aida-public/AB6AXuBbnMpjSpM11unrKE1PWI2lnM5m-bAakkaTbs2Z-N3V0BaZm-MRz5fZIgUhmvTX-HBOWJz83JYcLh_SYUL8jmaek_vPSAthy_LVpV6wdZdhO2ZUw6P7dcZ-llGcc7dUqVvJgMmcREEiC917O-JnShyf_4QYLOh_6Ov83kkS8x6BX-PSu8f59EI9X6I-wewm6Ozhr4FYjMMZIcFI0lvJ8KCmnJSrQ6thzdweIBkAJM5BWqjN4zYUGYEvxQUFLhU8Ok71fB_oW_PPOiM"]},
- {id:3, listing_type:"offer", university:"INHA", district:"Mirzo-Ulug'bek", housing_type:"Xonadonli uy", room_count:2, description:"Sokin joy, internet bor, hovlida xojayin turmaydi.", phone_number:"+998931112233", lat:41.34, lng:69.32, price:850000, people_needed:1, has_wifi:1, has_ac:1, has_washing_machine:1, no_landlord_in_yard:1, near_metro:0, telegram_username:"nigina_inha", photos:[]}
-];
+const {escapeHtml,formatPrice,photoFor,titleFor,parseDate,publishedLabel,expiresLabel,authorName}=SigamizUI;
 
-let map, mapProvider = "", appConfigPromise, allListings = [], markers = [], activeType = "offer", query = "", botLoginPollTimer = null, sharedListingOpened = false;
+
+let map, mapProvider = "", allListings = [], markers = [], activeType = "offer", query = "", sharedListingOpened = false;
 let sortMode = "default"; // "default" | "price_asc" | "price_desc"
 let priceMin = null, priceMax = null, priceReloadTimer;
 let currentUser = null, toastTimer;
 const activeFilters = new Set();
-const amenityLabels = {
- has_wifi:["wifi","~","Wi-Fi"], has_ac:["ac_unit","*","Konditsioner"],
- has_washing_machine:["local_laundry_service","â–¡","Kir yuvish"], no_landlord_in_yard:["home","^","Xo'jayinsiz"],
- near_metro:["train","=","Metro"]
-};
 
-function escapeHtml(value){
- return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
-}
+
 const iconAliases = {
  add:"add", account_circle:"account", search:"search", arrow_back:"back", tune:"tune",
  apps:"apps", apartment:"apartment", payments:"money", wifi:"wifi", ac_unit:"ac",
@@ -331,70 +324,26 @@ function showToast(html){
  clearTimeout(toastTimer);
  toastTimer = setTimeout(() => toast.classList.remove("show"), 5200);
 }
-function getAppConfig(){
- if(!appConfigPromise) appConfigPromise = fetch("/api/config").then(res => res.json()).catch(() => ({}));
- return appConfigPromise;
-}
-async function updateBotLinks(){
- const config = await getAppConfig();
- if(!config.bot_username) return;
- document.querySelectorAll("[data-bot-start]").forEach(link => {
-  const start = link.dataset.botStart || "start";
-  link.href = `https://t.me/${encodeURIComponent(config.bot_username)}?start=${encodeURIComponent(start)}`;
- });
-}
-function formatPrice(value){ return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " so'm"; }
+function getAppConfig(){return SigamizUI.config();}
+function updateBotLinks(){return SigamizUI.updateBotLinks();}
+
 function compactPrice(value){
  const price = Number(value || 0);
  if(price >= 1000000) return (price / 1000000).toFixed(price % 1000000 ? 1 : 0) + "m";
  return Math.round(price / 1000) + "k";
 }
-function parseDate(value){
- const date = value ? new Date(value) : null;
- return date && !Number.isNaN(date.getTime()) ? date : null;
-}
-function daysDiff(from, to){
- return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86400000));
-}
-function publishedLabel(value){
- const date = parseDate(value);
- if(!date) return "Yangi e'lon";
- const days = daysDiff(date, new Date());
- if(days <= 0) return "Bugun joylandi";
- if(days === 1) return "1 kun oldin joylandi";
- return `${days} kun oldin joylandi`;
-}
-function expiresLabel(value){
- const date = parseDate(value);
- if(!date) return "";
- const now = new Date();
- const ms = date.getTime() - now.getTime();
- if(ms <= 0) return "Muddati tugagan";
- const days = Math.ceil(ms / 86400000);
- if(days <= 1) return "Bugun o'chadi";
- return `${days} kunda o'chadi`;
-}
-function listingTimeLabel(item){
- return [publishedLabel(item.created_at), expiresLabel(item.expires_at)].filter(Boolean).join(" · ");
-}
-function authorName(item){
- if(item.author_first_name) return item.author_first_name;
- if(item.telegram_username) return `@${String(item.telegram_username).replace(/^@/,"")}`;
- return "Telegram user";
-}
-function avatarHtml(item){
- const name = authorName(item);
- const initial = escapeHtml(name.replace(/^@/,"").slice(0, 1).toUpperCase() || "T");
- return `<span class="avatar">${item.author_photo_url ? `<img src="${escapeHtml(item.author_photo_url)}" alt="">` : initial}</span>`;
-}
-function authorRowHtml(item, extraClass = ""){
- const username = item.telegram_username ? `@${String(item.telegram_username).replace(/^@/,"")}` : "Telegram akkaunt";
- return `<div class="author-row ${extraClass}">${avatarHtml(item)}<div><b>${escapeHtml(authorName(item))}</b><span>${escapeHtml(username)} · ${escapeHtml(listingTimeLabel(item))}</span></div></div>`;
-}
+
+
+
+
+
+
+
+function authorRowHtml(item,extra=""){return SigamizUI.authorHtml(item,extra);}
 function typeInfo(item){
  return {key:"offer", label:"E'lon", sub:`${item.people_needed || 1} xonadosh kerak`};
 }
-function titleFor(item){ return [item.district, item.university].filter(Boolean).join(", ") || "Toshkent"; }
+
 function parseMoney(value){
  const parsed = Number(String(value || "").replace(/[^\d]/g, ""));
  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -453,13 +402,8 @@ function listingShareUrl(id){
  url.searchParams.set("view", "list");
  return url.toString();
 }
-function photoFor(item){ return item.photos && item.photos.length ? item.photos[0] : ""; }
-function tagsFor(item, limit = 3){
- return Object.keys(amenityLabels).filter(key => item[key]).slice(0, limit).map(key => {
-  const [icon,,label] = amenityLabels[key];
-  return `<span class="tag">${iconMarkup(icon)}${escapeHtml(label)}</span>`;
- }).join("");
-}
+
+function tagsFor(item,limit=5){return SigamizUI.tagsFor(item,limit);}
 function loadScript(src){
  return new Promise((resolve,reject)=>{
   const script = document.createElement("script");
@@ -504,23 +448,28 @@ async function initMap(){
  initLeafletMap();
 }
 async function loadListings(){
+ const sequence=loadListings.sequence=(loadListings.sequence||0)+1;
+ SigamizUI.state("cards","loading");
+ document.getElementById("emptyState").style.display="none";
  try{
-  const res = await fetch(buildListingsUrl());
-  if(!res.ok) throw new Error("Bad response");
-  allListings = await res.json();
-  if(!Array.isArray(allListings)) throw new Error("Invalid response");
- }catch(e){ console.error("Failed to load listings", e); allListings = DEMO_LISTINGS; }
- allListings = allListings.filter(item => item.listing_type === "offer");
- render();
- openSharedListingFromUrl();
+  await SigamizUI.config();
+  const res=await fetch(buildListingsUrl());
+  if(!res.ok)throw new Error("load");
+  const items=await res.json();
+  if(!Array.isArray(items))throw new Error("shape");
+  if(sequence!==loadListings.sequence)return;
+  allListings=items.filter(item=>item.listing_type==="offer");
+  SigamizUI.state("cards","ready");
+  render();
+   openSharedListingFromUrl();
+ }catch(error){
+  if(sequence!==loadListings.sequence)return;
+  allListings=[];render();
+  document.getElementById("emptyState").style.display="none";
+  SigamizUI.state("cards","error",loadListings);
+ }
 }
-async function telegramAuth(user){
- const res = await fetch("/api/auth/telegram", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(user)});
- if(!res.ok) throw new Error("auth");
- await loadMe();
- await loadListings();
- showToast("Telegram orqali kirdingiz.");
-}
+
 async function loadMe(){
  const data = await fetch("/api/me").then(res => res.json()).catch(() => ({user:null}));
  currentUser = data.user;
@@ -528,74 +477,16 @@ async function loadMe(){
  if(currentUser){
   userBox.innerHTML = `<b>${escapeHtml(currentUser.first_name || "Telegram user")}</b><span>${currentUser.telegram_username ? `@${escapeHtml(currentUser.telegram_username)}` : "Telegram ulangan"}</span>`;
  }else{
-  userBox.innerHTML = "<b>Telegram orqali kiring</b><span>Izbrannoe va saqlash uchun kerak.</span>";
+  userBox.innerHTML = "<b>Telegram orqali kiring</b><span>Saqlanganlar va saqlash uchun kerak.</span>";
  }
  return currentUser;
 }
-async function startBotLogin(){
- const popup = window.open("about:blank", "_blank");
- try{
-  const session = await fetch("/api/auth/telegram/start", {method:"POST"}).then(res => {
-   if(!res.ok) throw new Error("Telegram bot sozlanmagan.");
-   return res.json();
-  });
-  showToast("Telegram ochildi. Botda Start bosing, keyin sahifa avtomatik kiradi.");
-  if(popup){popup.opener = null; popup.location.href = session.bot_url;}
-  else window.location.href = session.bot_url;
-  clearInterval(botLoginPollTimer);
-  botLoginPollTimer = setInterval(async () => {
-   try{
-    const res = await fetch("/api/auth/telegram/complete", {
-     method:"POST",
-     headers:{"Content-Type":"application/json"},
-     body:JSON.stringify({token:session.token})
-    });
-    if(res.status === 404){
-     clearInterval(botLoginPollTimer);
-     showToast("Kirish havolasi eskirdi. Telegram orqali kirishni qayta bosing.");
-     return;
-    }
-    const data = await res.json().catch(() => ({}));
-    if(data.ok){
-     clearInterval(botLoginPollTimer);
-     await loadMe();
-     await loadListings();
-     showToast("Telegram orqali kirdingiz.");
-    }
-   }catch(e){}
-  }, 1800);
-  setTimeout(() => clearInterval(botLoginPollTimer), 10 * 60 * 1000);
- }catch(e){
-  if(popup) popup.close();
-  showToast(String(e.message || e));
- }
-}
+async function startBotLogin(){ await SigamizAuth.start(); }
 async function mountTelegramLogin(){
- const config = await getAppConfig();
- const target = document.getElementById("mapTelegramLogin");
- target.innerHTML = "";
- window.onMapTelegramAuth = telegramAuth;
- if(config.telegram_client_id){
-  const button = document.createElement("button");
-  button.className = "tg-auth-button";
-  button.dataset.style = "shine";
-  button.type = "button";
-  button.textContent = "Sign In with Telegram";
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = "https://oauth.telegram.org/js/telegram-login.js?5";
-  script.dataset.clientId = config.telegram_client_id;
-  script.dataset.requestAccess = "write";
-  script.dataset.onauth = "onMapTelegramAuth(data)";
-  target.appendChild(button);
-  target.appendChild(script);
- }
- const fallback = document.createElement("button");
- fallback.className = "account-action";
- fallback.type = "button";
- fallback.textContent = "Bot orqali kirish";
- fallback.onclick = startBotLogin;
- target.appendChild(fallback);
+ await SigamizAuth.mount(document.getElementById("mapTelegramLogin"),async()=>{await loadMe();await loadListings();});
+ const login=document.getElementById("loginBtn");
+ if(login)login.onclick=startBotLogin;
+
 }
 function refreshMapSize(){
  if(!map) return;
@@ -650,7 +541,7 @@ function renderMarkers(items){
    map.geoObjects.add(marker);
   }else{
    const icon = L.divIcon({
-    className:"",
+    className:"", iconSize:[80,36], iconAnchor:[40,18],
     html:`<div class="pin ${item.status === "hidden_pending_review" ? "reviewing" : type.key}"><span>${escapeHtml(compactPrice(item.price))}</span></div>`
    });
    marker = L.marker([lat,lng], { icon }).addTo(map);
@@ -674,7 +565,7 @@ function renderCards(items){
     <button class="share" type="button" aria-label="Ulashish" onclick="shareListing(event, ${item.id})">${iconMarkup("send")}</button>
    </div>
    <div class="card-body">
-    <div class="card-price">${formatPrice(item.price)} <small>/oy</small></div>
+    <div class="card-price">${formatPrice(item.price)} <small>/ kishi / oy</small></div>
     <div class="card-top">
      <h2 class="card-title">${escapeHtml(titleFor(item))}</h2>
      <span class="type-badge ${type.key}">${escapeHtml(type.label)}</span>
@@ -704,29 +595,35 @@ async function openDetail(id){
  item = await fetchDetail(item);
  document.querySelectorAll(".card").forEach(card => card.classList.toggle("selected", Number(card.dataset.id) === Number(id)));
  const type = typeInfo(item), photo = photoFor(item);
- document.getElementById("detailMedia").innerHTML = `${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}<button class="close" type="button" onclick="closeDetail()">${iconMarkup("close")}</button>`;
+ document.getElementById("detailMedia").innerHTML = `${photo ? `<img src="${escapeHtml(photo)}" alt="Xona rasmi">` : "Rasm yo'q"}<button class="close" type="button" aria-label="Yopish" onclick="closeDetail()">${iconMarkup("close")}</button>`;
  const telegram = (item.telegram_username || "").replace(/^@/,"").trim();
  const phone = (item.phone_number || "").trim();
  const infos = [
   item.district && ["Tuman", item.district],
   item.university && ["Universitet", item.university],
   item.housing_type && ["Uy turi", item.housing_type],
-  item.room_count && ["Xonalar", `${item.room_count} xona`]
+  item.room_count && ["Xonalar", `${item.room_count} xona`],
+  item.people_needed && ["Kerak", `${item.people_needed} xonadosh`],
+  item.author_gender && ["E’lon egasi", item.author_gender === "female" ? "Ayol" : "Erkak"],
+  item.preferred_gender && ["Xonadosh", ({male:"Erkak",female:"Ayol",any:"Farqi yo’q"})[item.preferred_gender]]
  ].filter(Boolean).map(([label,value]) => `<div class="info"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join("");
  document.getElementById("detailBody").innerHTML = `
   <span class="type-badge ${type.key}">${escapeHtml(type.label)}</span>
-  <h2 style="margin:12px 0 4px;font-size:24px">${formatPrice(item.price)} / oyiga</h2>
+  <h2 style="margin:12px 0 4px;font-size:24px">${formatPrice(item.price)} / kishi / oy</h2>
   ${authorRowHtml(item, "detail-author")}
   <p class="desc" style="-webkit-line-clamp:unset">${escapeHtml(item.description || type.sub)}</p>
   ${infos ? `<div class="detail-grid">${infos}</div>` : ""}
   <div class="tags">${tagsFor(item, 8)}</div>
   <div class="detail-actions">
    ${telegram ? `<a class="primary-action" href="https://t.me/${encodeURIComponent(telegram)}" target="_blank">Telegram orqali yozish</a>` : ""}
-   ${phone ? `<a class="secondary-action" href="tel:${escapeHtml(phone.replace(/[^\\d+]/g,""))}">Telefon qilish</a>` : ""}
+   ${phone ? `<a class="secondary-action" href="tel:${escapeHtml(SigamizUI.phone(phone))}">Telefon qilish</a>` : ""}
    <button class="secondary-action" type="button" onclick="shareListing(event, ${item.id})">Ulashish</button>
    <button class="report" type="button" onclick="reportListing(${item.id})">Shikoyat qilish</button>
   </div>`;
- document.getElementById("detailDrawer").classList.add("open");
+ const drawer=document.getElementById("detailDrawer"), alreadyOpen=drawer.classList.contains("open");
+ drawer.classList.add("open");
+ SigamizUI.gallery(document.getElementById("detailMedia"),item.photos || []);
+ if(!alreadyOpen) SigamizUI.openDialog(drawer,document.querySelector(`.card[data-id="${item.id}"] h2 a`));
 }
 async function shareListing(event, id){
  if(event) event.stopPropagation();
@@ -756,13 +653,13 @@ async function toggleFavorite(event, id){
   const response = await fetch(`/api/favorites/${id}`, { method: nextState ? "POST" : "DELETE" });
   if(response.status === 401) throw new Error("auth");
   if(!response.ok) throw new Error("favorite");
-  if(nextState) showToast(`E'lon izbrannoega qo'shildi. Bir nechta e'lonni saqlab, <a href="/favorites">Izbrannoeda solishtirishingiz mumkin</a>.`);
+  if(nextState) showToast(`E'lon izbrannoega qo'shildi. Bir nechta e'lonni saqlab, <a href="/favorites">Saqlanganlarda solishtirishingiz mumkin</a>.`);
   else showToast("E'lon izbrannoedan olib tashlandi.");
  }catch(e){
   item.is_favorite = !nextState;
   render();
   openAccountMenu();
-  showToast("Izbrannoe uchun avval Telegram orqali kiring.");
+  showToast("Saqlanganlar uchun avval Telegram orqali kiring.");
  }
 }
 async function markViewed(id){
@@ -773,7 +670,7 @@ async function markViewed(id){
  }
  try{ await fetch(`/api/listings/${id}/view`, { method:"POST" }); }catch(e){}
 }
-function closeDetail(){ document.getElementById("detailDrawer").classList.remove("open"); }
+function closeDetail(){ const drawer=document.getElementById("detailDrawer"); drawer.classList.remove("open"); SigamizUI.closeDialog(drawer); }
 function toggleResultsSheet(){
  const collapsed = document.body.classList.toggle("sheet-collapsed");
  document.querySelector(".sheet-toggle").setAttribute("aria-expanded", String(!collapsed));
